@@ -120,8 +120,10 @@ def test_skip_names_keeps_french_licence_reports():
 def test_one_added_paragraph_in_a_long_report_is_not_a_copy(tmp_path, monkeypatch):
     # regression: a 90% "same text" rule merged this side copy into its original and hid the paragraph
     monkeypatch.setattr(core, "cache_path", lambda: str(tmp_path / "cache.json"))
-    body = [f"Section {i}: the measured drag at configuration number {i} matches the expected value within tolerance."
-            for i in range(40)]
+    topics = ["wing", "tail", "fuselage", "landing gear", "propeller", "battery", "camera", "aileron", "rudder", "flap"]
+    body = [f"For the {t} at setting {k}, the measured drag {'matches' if n % 2 else 'exceeds'} the predicted value "
+            f"and the {topics[(n + 3) % 10]} was checked again." for n, (t, k) in
+            enumerate((t, k) for k in ("low", "medium", "high", "maximum") for t in topics)]
     docx(tmp_path / "long.docx", body, "2025-02-01T10:00:00Z")
     docx(tmp_path / "long_side.docx", body[:20] + [P] + body[20:], "2025-02-02T10:00:00Z")
     docx(tmp_path / "long_v2.docx", body + [E], "2025-02-03T10:00:00Z")
@@ -143,3 +145,10 @@ def test_pdf_running_header_does_not_split_an_export(story):
     r = core.report(core.families(docs)[0])
     head = r["versions"][r["head"]]
     assert {os.path.basename(f["path"]) for f in head["files"]} >= {"report_final.docx", "report_final.txt"}
+
+
+def test_page_footers_are_layout_but_two_similar_rows_are_not():
+    paras = [A, "Jane Doe Sam Page 1 sur 9", B, "Jane Doe Sam Page 2 sur 9", C, "Jane Doe Sam Page 3 sur 9",
+             "First run water mass 807 grams measured", "Second run water mass 606 grams measured"]
+    d = core.Doc(0, "x.pdf", 0, 0, "file", paras)
+    assert {paras[i] for i in d.layout} == {p for p in paras if "Page" in p}

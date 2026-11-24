@@ -51,7 +51,9 @@ class Doc:
         all_words = []
         for i, p in enumerate(paras):
             ws = words(p)
-            if len(ws) >= MIN_WORDS:
+            prose = sum(1 for w in ws if not any(c.isdigit() for c in w))
+            # a row of a data table is not writing, and PDFs lay tables out differently anyway
+            if prose >= MIN_WORDS and prose >= len(ws) / 2:
                 self.content.append(i)
                 all_words.extend(ws)
         self.sh = {h for h in shingles(all_words, DOC_SHINGLE) if h & 3 == 0} if len(all_words) >= DOC_SHINGLE else set()
@@ -66,11 +68,22 @@ class Doc:
         return [shingles(n.split(), PARA_SHINGLE) for n in self.norm]
 
     @cached_property
+    def layout(self):
+        """Paragraphs that are page furniture, not writing: the same line repeated, or repeated
+        3+ times with only numbers changing (a PDF's "Name - page 3 of 9" footer)."""
+        exact, shape = defaultdict(int), defaultdict(int)
+        for i in self.content:
+            exact[self.norm[i]] += 1
+            shape[re.sub(r"\d+", "#", self.norm[i])] += 1
+        return {i for i in self.content
+                if exact[self.norm[i]] > 1 or shape[re.sub(r"\d+", "#", self.norm[i])] >= 3}
+
+    @cached_property
     def allsh(self):
         # every 3-word run of the text, across paragraph breaks: a paragraph "is in" a document
         # when most of its runs are, however that document's format cut it into paragraphs
-        ws = [w for i in self.content for w in self.norm[i].split()]
-        return shingles(ws, PARA_SHINGLE)
+        # short paragraphs too: a Word table has one paragraph per cell, its PDF export one line per row
+        return shingles(" ".join(self.norm).split(), PARA_SHINGLE)
 
 
 # ---------------------------------------------------------------- scanning
@@ -260,12 +273,8 @@ def contained(sh, big):
 
 
 def lost(a, b):
-    """True if some paragraph of `a` is missing from `b`. A paragraph repeated in `a` (a PDF's
-    running header on every page) is layout and is ignored."""
-    seen = defaultdict(int)
-    for i in a.content:
-        seen[a.norm[i]] += 1
-    return any(seen[a.norm[i]] == 1 and contained(a.psh[i], b.allsh) < KEPT for i in a.content)
+    """True if some written paragraph of `a` is missing from `b`."""
+    return any(i not in a.layout and contained(a.psh[i], b.allsh) < KEPT for i in a.content)
 
 
 def same_content(a, b):
@@ -327,6 +336,8 @@ def analyse(family, head_id=None):
         d = v["doc"]
         last_anchor = None
         for i in d.content:
+            if i in d.layout:
+                continue
             sh = d.psh[i]
             if contained(sh, head_sh) >= KEPT:
                 last_anchor = d.paras[i]  # only paragraphs the head still has can anchor a stray

@@ -49,6 +49,8 @@ def _docx(z):
     for p in root.iter(W + "p"):
         parts = []
         for el in p.iter():
+            # equations (math:t) are left out: PDF exports scatter them into fragments that would
+            # make a .docx and its own PDF look like different versions
             if el.tag == W + "t" and el.text:
                 parts.append(el.text)
             elif el.tag == W + "tab":

@@ -16,7 +16,7 @@ sys.path.insert(0, __file__.rsplit("bench", 1)[0])
 from gleaner import core  # noqa: E402
 
 rng = random.Random(7)
-VOCAB = [f"w{i}" for i in range(5000)]
+VOCAB = ["".join("abcdefghijklmnopqrstuvwxyz"[(i // 26 ** k) % 26] for k in range(3)) + "x" for i in range(5000)]
 WEIGHTS = [1 / (i + 1) for i in range(5000)]  # Zipf-like: a few very common words, as in real text
 TEMPLATE = "Institut name department of aeronautics year two group project report submitted to the jury on the date below"
 
