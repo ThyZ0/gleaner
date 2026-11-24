@@ -241,3 +241,39 @@ def test_password_protected_office_file_is_named_as_such(tmp_path):
     p.write_bytes(bytes.fromhex("d0cf11e0a1b11ae1") + b"\0" * 600)
     with pytest.raises(Unreadable, match="password-protected"):
         extract(str(p))
+
+
+def pptx(path, slides_text, order, modified):
+    """slides_text[k] = paragraphs of file slide{k+1}.xml; order = file numbers in showing order."""
+    with zipfile.ZipFile(path, "w") as z:
+        for k, paras in enumerate(slides_text, 1):
+            body = "".join(f"<a:p><a:r><a:t>{p}</a:t></a:r></a:p>" for p in paras)
+            z.writestr(f"ppt/slides/slide{k}.xml",
+                       '<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+                       'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">'
+                       f"<p:cSld><p:spTree><p:sp><p:txBody>{body}</p:txBody></p:sp></p:spTree></p:cSld></p:sld>")
+        rels = "".join(f'<Relationship Id="rId{k}" Target="slides/slide{k}.xml" Type="slide"/>'
+                       for k in range(1, len(slides_text) + 1))
+        z.writestr("ppt/_rels/presentation.xml.rels",
+                   f'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{rels}</Relationships>')
+        ids = "".join(f'<p:sldId id="{255 + k}" r:id="rId{k}"/>' for k in order)
+        z.writestr("ppt/presentation.xml",
+                   '<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" '
+                   'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+                   f"<p:sldIdLst>{ids}</p:sldIdLst></p:presentation>")
+        z.writestr("docProps/core.xml",
+                   '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
+                   f'xmlns:dcterms="http://purl.org/dc/terms/"><dcterms:modified>{modified}</dcterms:modified></cp:coreProperties>')
+
+
+def test_pptx_reads_slides_in_showing_order_and_names_the_slide_of_a_stray(tmp_path, monkeypatch):
+    monkeypatch.setattr(core, "cache_path", lambda: str(tmp_path / "cache.json"))
+    # file slide2 is shown first
+    pptx(tmp_path / "talk.pptx", [[C, D], [A, B]], [2, 1], "2025-01-01T10:00:00Z")
+    paras, _, _ = extract(str(tmp_path / "talk.pptx"))
+    assert paras == [A, B, C, D]
+    pptx(tmp_path / "talk_sam.pptx", [[C, P, D], [A, B]], [2, 1], "2025-01-02T10:00:00Z")
+    pptx(tmp_path / "talk_v2.pptx", [[C, D, E], [A, B]], [2, 1], "2025-01-03T10:00:00Z")
+    docs, _ = core.scan([str(tmp_path)])
+    r = core.report(core.families(docs)[0])
+    assert [(s["text"], s.get("slide")) for s in r["stranded"]] == [(P, 2)]

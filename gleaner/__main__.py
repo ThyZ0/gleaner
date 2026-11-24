@@ -104,7 +104,8 @@ def cmd_show(args):
     if r["stranded"]:
         print(f"\n⚑ {len(r['stranded'])} passage(s) written in another copy never reached the latest version:")
         for s in r["stranded"]:
-            print(f"\n  from v{s['source'] + 1}: «{short(s['text'], 300)}»")
+            where = f", slide {s['slide']}" if s.get("slide") else ""
+            print(f"\n  from v{s['source'] + 1}{where}: «{short(s['text'], 300)}»")
             if s["after"]:
                 print(f"    belongs after: «{short(s['after'], 80)}»")
     else:

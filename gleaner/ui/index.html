@@ -191,7 +191,7 @@ const T = {
     noFam: "No document exists in several versions in these folders.", pick: "Pick a document on the left.",
     readingTitle: "Reading your documents…", noRecv: "PDF-only families: documents you most likely received rather than wrote.",
     from: "from", words: "words", time_file: "file date", time_document: "date saved in the document",
-    copies: "copies", missing: "Folder not found:", filter: "Find a document", progress: (n, t) => `${n} / ${t} files`,
+    copies: "copies", missing: "Folder not found:", filter: "Find a document", slide: n => `slide ${n}`, progress: (n, t) => `${n} / ${t} files`,
     noFamHint: "Copies often live elsewhere: add a USB drive, an email attachments folder or a shared drive to the folders above, separated by ;",
     suspect: v => `The newest file may be an old or partial copy with a recent date: everything in it is also in v${v}, which also has passages missing here.`,
     makeHeadV: v => `Treat v${v} as latest`, sameN: n => `${n} identical copies`, merge: "Create a merged copy",
@@ -218,7 +218,7 @@ const T = {
     noFam: "Aucun document n'existe en plusieurs versions dans ces dossiers.", pick: "Choisissez un document à gauche.",
     readingTitle: "Lecture de vos documents…", noRecv: "Familles uniquement en PDF : sans doute des documents reçus plutôt qu'écrits.",
     from: "issue de", words: "mots", time_file: "date du fichier", time_document: "date enregistrée dans le document",
-    copies: "copies", missing: "Dossier introuvable :", filter: "Chercher un document", progress: (n, t) => `${n} / ${t} fichiers`,
+    copies: "copies", missing: "Dossier introuvable :", filter: "Chercher un document", slide: n => `diapositive ${n}`, progress: (n, t) => `${n} / ${t} fichiers`,
     noFamHint: "Les copies sont souvent ailleurs : ajoutez une clé USB, un dossier de pièces jointes ou un disque partagé aux dossiers ci-dessus, séparés par ;",
     suspect: v => `Le fichier le plus récent est peut-être une copie ancienne ou partielle à date récente : tout son contenu se trouve aussi dans la v${v}, qui contient en plus des passages absents ici.`,
     makeHeadV: v => `Considérer la v${v} comme la dernière`, sameN: n => `${n} copies identiques`, merge: "Créer une copie fusionnée",
@@ -344,7 +344,7 @@ function renderFamily() {
     </div>`;
   }).join("");
   const strays = f.stranded.map((s, k) => `<div class="stray"><p>${esc(s.text)}</p><div class="from">
-      <span>${L.inV(s.source + 1)} · ${esc(base(vs[s.source].files[0].path))}</span>
+      <span>${L.inV(s.source + 1)} · ${esc(base(vs[s.source].files[0].path))}${s.slide ? ` · ${L.slide(s.slide)}` : ""}</span>
       <span class="after">${s.after ? `${L.after} « ${esc(s.after.length > 90 ? s.after.slice(0, 89) + "…" : s.after)} »` : L.atStart}</span>
       <button class="btn small" data-copy="${k}">${L.copy}</button>
       <button class="btn small" data-reveal="${vs[s.source].files[0].id}">${L.open}</button></div></div>`).join("");

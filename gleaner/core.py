@@ -11,7 +11,7 @@ from collections import defaultdict
 from functools import cached_property
 from zlib import crc32
 
-from .extract import SUPPORTED, Unreadable, extract
+from .extract import SUPPORTED, Unreadable, extract, slides
 
 # the cache holds extracted text: any change to the extractor must invalidate it
 with open(os.path.join(os.path.dirname(__file__), "extract.py"), "rb") as _f:
@@ -424,6 +424,16 @@ def report(family, head_id=None):
                       for c in sorted(v["copies"], key=lambda c: (c is not d, -c.time))],
         })
     stranded = [s for s in strays if s["status"] == "stranded"]
+    # in a presentation, "slide 4" says where to look far better than a neighbouring line
+    slide_maps = {}
+    for s in strays:
+        d = versions[s["source"]]["doc"]
+        if ext(d) == ".pptx" and s["text"] in d.paras:
+            if d.path not in slide_maps:
+                slide_maps[d.path] = slides(d.path)
+            m = slide_maps[d.path]
+            if m and len(m) == len(d.paras):
+                s["slide"] = m[d.paras.index(s["text"])]
     # Dates lie: a re-downloaded old attachment is "newest". If everything in the head is also
     # in another version that has more, that version is probably the real latest.
     better = [v for v in versions if v is not head and not lost(head["doc"], v["doc"]) and lost(v["doc"], head["doc"])]
