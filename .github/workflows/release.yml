@@ -29,6 +29,7 @@ jobs:
           Stop-Process $p.Id
       - run: python -m build
       - name: Publish
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create ${{ github.ref_name }} dist/Gleaner.exe dist/*.whl dist/*.tar.gz --title "Gleaner ${{ github.ref_name }}" --notes-file packaging/RELEASE_NOTES.md
