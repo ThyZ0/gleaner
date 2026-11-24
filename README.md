@@ -20,7 +20,9 @@ Everything runs on your computer and nothing is sent anywhere. Gleaner never mod
 
 ## Install
 
-Python 3.10 or newer.
+**Windows, without Python:** download `Gleaner.exe` from the [latest release](https://github.com/ThyZ0/gleaner/releases/latest) and double-click it. It opens in your browser on your usual folders and stops by itself five minutes after you close the tab. Windows may say the publisher is unknown (the file is not code-signed): *More info → Run anyway*. To remove it, delete the file and the `.gleaner` folder in your user folder.
+
+**With Python** 3.10 or newer, on any system:
 
 ```
 pip install "gleaner-docs[pdf] @ git+https://github.com/ThyZ0/gleaner"

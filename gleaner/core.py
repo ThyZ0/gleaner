@@ -14,8 +14,12 @@ from zlib import crc32
 from .extract import SUPPORTED, Unreadable, extract, slides
 
 # the cache holds extracted text: any change to the extractor must invalidate it
-with open(os.path.join(os.path.dirname(__file__), "extract.py"), "rb") as _f:
-    CACHE_VERSION = "2-" + hashlib.sha1(_f.read()).hexdigest()[:12]  # bump the prefix when the entry format changes
+try:
+    with open(os.path.join(os.path.dirname(__file__), "extract.py"), "rb") as _f:
+        CACHE_VERSION = "2-" + hashlib.sha1(_f.read()).hexdigest()[:12]  # bump the prefix when the entry format changes
+except OSError:  # the Windows .exe ships compiled code only: its version stands in for the source
+    from . import __version__
+    CACHE_VERSION = "2-exe-" + __version__
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "site-packages", "$recycle.bin",
              "appdata", ".cache", ".tox", "dist", "build", ".idea", ".vscode"}
 # legal boilerplate shipped with software: shared by thousands of files, written by nobody here
