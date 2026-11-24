@@ -233,3 +233,11 @@ def test_merged_copy_is_dated_now_so_it_becomes_the_latest(story):
     assert src == "document" and t > head_doc.time
     r = core.report(core.families(core.scan([str(story)])[0])[0])
     assert r["versions"][r["head"]]["files"][0]["path"] == out and not r["stranded"]
+
+
+def test_password_protected_office_file_is_named_as_such(tmp_path):
+    from gleaner.extract import Unreadable
+    p = tmp_path / "locked.docx"
+    p.write_bytes(bytes.fromhex("d0cf11e0a1b11ae1") + b"\0" * 600)
+    with pytest.raises(Unreadable, match="password-protected"):
+        extract(str(p))

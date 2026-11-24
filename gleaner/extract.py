@@ -177,6 +177,9 @@ def extract(path):
         else:
             paras = _plain(path)
     except (zipfile.BadZipFile, KeyError, ET.ParseError) as e:
+        with open(path, "rb") as f:
+            if f.read(8) == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1":  # OLE container, not a zip
+                raise Unreadable("password-protected, or an old Office file renamed")
         raise Unreadable(f"damaged or not a real {ext} file ({type(e).__name__})")
     except OSError as e:
         raise Unreadable(f"cannot open ({e.strerror or e})")
