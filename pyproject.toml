@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gleaner-docs"
+dynamic = ["version"]
+description = "Find every version of your documents, which one is the latest, and the passages left behind in older copies."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+dependencies = []
+classifiers = ["Programming Language :: Python :: 3", "Operating System :: OS Independent",
+               "Topic :: Office/Business", "Environment :: Web Environment"]
+
+[project.optional-dependencies]
+pdf = ["pypdf>=4"]
+dev = ["pytest", "pypdf>=4"]
+
+[project.scripts]
+gleaner = "gleaner.__main__:main"
+
+[tool.setuptools]
+packages = ["gleaner"]
+
+[tool.setuptools.package-data]
+gleaner = ["ui/*.html"]
+
+[tool.setuptools.dynamic]
+version = { attr = "gleaner.__version__" }

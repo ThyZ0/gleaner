@@ -1,0 +1,10 @@
+{
+  "name": "gleaner",
+  "version": "0.1.0",
+  "description": "Finds every version of a document on this computer, says which is the latest, and recovers passages written in older or side copies that never reached it. Local, read-only. Requires the gleaner command: pip install \"gleaner-docs[pdf] @ git+https://github.com/ThyZ0/gleaner\"",
+  "author": { "name": "ThyZ0", "url": "https://github.com/ThyZ0" },
+  "homepage": "https://github.com/ThyZ0/gleaner",
+  "repository": "https://github.com/ThyZ0/gleaner",
+  "license": "MIT",
+  "keywords": ["documents", "versions", "word", "pdf", "duplicates", "diff"]
+}

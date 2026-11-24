@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "gleaner",
+  "description": "Gleaner: every version of your documents, and what was left behind.",
+  "owner": { "name": "ThyZ0", "url": "https://github.com/ThyZ0" },
+  "plugins": [
+    {
+      "name": "gleaner",
+      "description": "Finds every version of a document, the latest one, and passages left behind in older copies.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
