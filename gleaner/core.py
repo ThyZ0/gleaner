@@ -445,34 +445,64 @@ def report(family, head_id=None):
 
 # ---------------------------------------------------------------- diff
 
+_SENTENCE = re.compile(r"(?<=[.!?…:;])\s+")
+
+
+def _units(doc, sentences):
+    if not sentences:
+        return list(doc.paras)
+    return [u for p in doc.paras for u in _SENTENCE.split(p) if u.strip()]
+
+
+def _present(text, doc):
+    ws = words(text)
+    if len(ws) < PARA_SHINGLE:  # a one- or two-word heading: look for the words themselves
+        return " " + " ".join(ws) + " " in " " + " ".join(doc.norm) + " "
+    return contained(shingles(ws, PARA_SHINGLE), doc.allsh) >= 0.8
+
+
 def diff(a, b, context=2):
-    """Paragraph-level diff of Doc a -> Doc b, with word-level detail on edited paragraphs."""
-    sm = difflib.SequenceMatcher(None, a.norm, b.norm, autojunk=False)
+    """Diff of Doc a -> Doc b, with word-level detail on edited parts. Paragraph by paragraph,
+    or sentence by sentence when the two files cut paragraphs differently (a .docx and a text
+    or PDF version of it), where comparing paragraphs would show everything as changed."""
+    same_paras = len(set(a.norm) & set(b.norm))
+    sentences = same_paras < 0.5 * min(len(a.norm), len(b.norm))
+    ua, ub = _units(a, sentences), _units(b, sentences)
+    na, nb = [" ".join(words(u)) for u in ua], [" ".join(words(u)) for u in ub]
+    sa = [shingles(n.split(), PARA_SHINGLE) for n in na]
+    sb = [shingles(n.split(), PARA_SHINGLE) for n in nb]
+    sm = difflib.SequenceMatcher(None, na, nb, autojunk=False)
     out = []
     for op, i1, i2, j1, j2 in sm.get_opcodes():
         if op == "equal":
             n = i2 - i1
             if n > 2 * context + 1:
-                out += [{"t": "same", "text": a.paras[i]} for i in range(i1, i1 + context)]
+                out += [{"t": "same", "text": ua[i]} for i in range(i1, i1 + context)]
                 out.append({"t": "skip", "n": n - 2 * context})
-                out += [{"t": "same", "text": a.paras[i]} for i in range(i2 - context, i2)]
+                out += [{"t": "same", "text": ua[i]} for i in range(i2 - context, i2)]
             else:
-                out += [{"t": "same", "text": a.paras[i]} for i in range(i1, i2)]
+                out += [{"t": "same", "text": ua[i]} for i in range(i1, i2)]
             continue
         olds, news = list(range(i1, i2)), list(range(j1, j2))
-        # pair up edited paragraphs, leave the rest as plain removals/additions
+        # pair up edited parts, leave the rest as plain removals/additions
         while olds or news:
-            if olds and news and jaccard(a.psh[olds[0]], b.psh[news[0]]) >= 0.3:
-                out.append({"t": "mod", "words": word_diff(a.paras[olds.pop(0)], b.paras[news.pop(0)])})
-            elif olds and (not news or _best(a.psh[olds[0]], b, news) < 0.3):
-                out.append({"t": "del", "text": a.paras[olds.pop(0)]})
+            if olds and news and jaccard(sa[olds[0]], sb[news[0]]) >= 0.3:
+                out.append({"t": "mod", "words": word_diff(ua[olds.pop(0)], ub[news.pop(0)])})
+            elif olds and (not news or max(jaccard(sa[olds[0]], sb[j]) for j in news) < 0.3):
+                out.append({"t": "del", "text": ua[olds.pop(0)]})
             else:
-                out.append({"t": "add", "text": b.paras[news.pop(0)]})
+                out.append({"t": "add", "text": ub[news.pop(0)]})
+    if sentences:
+        # a heading glued to the next sentence by the other format is cut differently, not changed
+        for x in out:
+            if x["t"] == "mod":
+                old = "".join(w for o, w in x["words"] if o != "+")
+                new = "".join(w for o, w in x["words"] if o != "-")
+                if _present(old, b) and _present(new, a):
+                    x.clear(); x.update(t="same", text=new)
+            elif x["t"] in ("del", "add") and _present(x["text"], b if x["t"] == "del" else a):
+                x["t"] = "same"
     return out
-
-
-def _best(sh, doc, idxs):
-    return max((jaccard(sh, doc.psh[j]) for j in idxs), default=0.0)
 
 
 def word_diff(old, new):

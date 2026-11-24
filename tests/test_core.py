@@ -212,3 +212,12 @@ def test_an_old_pdf_downloaded_today_does_not_make_its_version_new(story):
     assert any(f["path"].endswith("report_final.docx") for f in head["files"])
     v1 = next(v for v in r["versions"] if any(f["path"].endswith("report_from_mail.md") for f in v["files"]))
     assert v1["n"] == 0
+
+
+def test_diff_between_differently_cut_files_shows_only_real_changes():
+    a = core.Doc(0, "a.docx", 0, 0, "document", ["Introduction", A, B, C])
+    b = core.Doc(1, "a.txt", 0, 0, "file", ["Introduction " + A + " " + B2 + " " + C])  # one paragraph, B edited
+    blocks = core.diff(a, b)
+    changed = [x for x in blocks if x["t"] not in ("same", "skip")]
+    assert len(changed) == 1 and changed[0]["t"] == "mod"
+    assert any(o == "+" and "almost" in w for o, w in changed[0]["words"])

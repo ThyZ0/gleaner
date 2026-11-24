@@ -191,7 +191,7 @@ const T = {
     readingTitle: "Reading your documents…", noRecv: "PDF-only families: documents you most likely received rather than wrote.",
     from: "from", words: "words", time_file: "file date", time_document: "date saved in the document",
     copies: "copies", missing: "Folder not found:", filter: "Find a document",
-    suspect: v => `The newest file may be an old copy with a recent date: everything in it is also in v${v}, which has more.`,
+    suspect: v => `The newest file may be an old or partial copy with a recent date: everything in it is also in v${v}, which also has passages missing here.`,
     makeHeadV: v => `Treat v${v} as latest`, sameN: n => `${n} identical copies`, merge: "Create a merged copy",
     mergeHelp: "Writes a new file next to the latest version, with these passages put back where they belong and highlighted. The original is not modified.",
     mergedTo: n => `${n} passage${n > 1 ? "s" : ""} put back, highlighted in yellow, in a new file:`, paths: "Paths below are relative to"
@@ -217,7 +217,7 @@ const T = {
     readingTitle: "Lecture de vos documents…", noRecv: "Familles uniquement en PDF : sans doute des documents reçus plutôt qu'écrits.",
     from: "issue de", words: "mots", time_file: "date du fichier", time_document: "date enregistrée dans le document",
     copies: "copies", missing: "Dossier introuvable :", filter: "Chercher un document",
-    suspect: v => `Le fichier le plus récent est peut-être une vieille copie à date récente : tout son contenu se trouve aussi dans la v${v}, qui en contient davantage.`,
+    suspect: v => `Le fichier le plus récent est peut-être une copie ancienne ou partielle à date récente : tout son contenu se trouve aussi dans la v${v}, qui contient en plus des passages absents ici.`,
     makeHeadV: v => `Considérer la v${v} comme la dernière`, sameN: n => `${n} copies identiques`, merge: "Créer une copie fusionnée",
     mergeHelp: "Écrit un nouveau fichier à côté de la dernière version, avec ces passages remis à leur place et surlignés. L'original n'est pas modifié.",
     mergedTo: n => `${n} passage${n > 1 ? "s" : ""} remis en place, surligné${n > 1 ? "s" : ""} en jaune, dans un nouveau fichier :`, paths: "Chemins ci-dessous relatifs à"
