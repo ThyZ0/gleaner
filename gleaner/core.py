@@ -15,7 +15,7 @@ from .extract import SUPPORTED, Unreadable, extract
 
 # the cache holds extracted text: any change to the extractor must invalidate it
 with open(os.path.join(os.path.dirname(__file__), "extract.py"), "rb") as _f:
-    CACHE_VERSION = hashlib.sha1(_f.read()).hexdigest()[:12]
+    CACHE_VERSION = "2-" + hashlib.sha1(_f.read()).hexdigest()[:12]  # bump the prefix when the entry format changes
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "site-packages", "$recycle.bin",
              "appdata", ".cache", ".tox", "dist", "build", ".idea", ".vscode"}
 # legal boilerplate shipped with software: shared by thousands of files, written by nobody here
