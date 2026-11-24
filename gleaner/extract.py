@@ -62,15 +62,49 @@ def _docx(z):
     return out
 
 
-def _pptx(z):
-    slides = [n for n in z.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml", n)]
-    slides.sort(key=lambda n: int(re.search(r"(\d+)\.xml$", n).group(1)))
+P_NS = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
+R_NS = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+REL = "{http://schemas.openxmlformats.org/package/2006/relationships}"
+
+
+def _slide_order(z):
+    """Slide files in the order the presentation shows them (slide7.xml may be shown second)."""
+    files = [n for n in z.namelist() if re.fullmatch(r"ppt/slides/slide\d+\.xml", n)]
+    try:
+        rels = ET.fromstring(z.read("ppt/_rels/presentation.xml.rels"))
+        target = {r.get("Id"): "ppt/" + r.get("Target").lstrip("/").replace("ppt/", "", 1) for r in rels.iter(REL + "Relationship")}
+        pres = ET.fromstring(z.read("ppt/presentation.xml"))
+        order = [target.get(s.get(R_NS + "id")) for s in pres.iter(P_NS + "sldId")]
+        order = [n for n in order if n in files]
+        if order:
+            return order
+    except (KeyError, ET.ParseError, AttributeError):
+        pass
+    return sorted(files, key=lambda n: int(re.search(r"(\d+)\.xml$", n).group(1)))
+
+
+def _pptx_located(z):
+    """[(text, slide number)] for every paragraph, in showing order."""
     out = []
-    for n in slides:
+    for k, n in enumerate(_slide_order(z), 1):
         root = ET.fromstring(z.read(n))
         for p in root.iter(A + "p"):
-            out.append("".join(t.text or "" for t in p.iter(A + "t")))
+            out.append(("".join(t.text or "" for t in p.iter(A + "t")), k))
     return out
+
+
+def _pptx(z):
+    return [t for t, _ in _pptx_located(z)]
+
+
+def slides(path):
+    """Slide number of each paragraph extract() returns for a .pptx, or None if unavailable."""
+    try:
+        with zipfile.ZipFile(path) as z:
+            located = _pptx_located(z)
+    except (OSError, zipfile.BadZipFile, KeyError, ET.ParseError):
+        return None
+    return [k for t, k in located if _clean(t)]
 
 
 def _odf(z):
@@ -156,6 +190,10 @@ def _pdf(path):
     return out
 
 
+def _clean(p):
+    return re.sub("[ 	 ]+", " ", p).strip()
+
+
 def extract(path):
     """Return (paragraphs, edited_time, time_source). Raises Unreadable."""
     ext = os.path.splitext(path)[1].lower()
@@ -183,8 +221,7 @@ def extract(path):
         raise Unreadable(f"damaged or not a real {ext} file ({type(e).__name__})")
     except OSError as e:
         raise Unreadable(f"cannot open ({e.strerror or e})")
-    paras = [re.sub(r"[ \t ]+", " ", p).strip() for p in paras]
-    paras = [p for p in paras if p]
+    paras = [c for c in map(_clean, paras) if c]
     if meta_time:
         return paras, meta_time, "document"
     return paras, st.st_mtime, "file"
