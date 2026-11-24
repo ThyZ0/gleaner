@@ -107,6 +107,8 @@ section > h3 .btn { text-transform: none; letter-spacing: 0; font-weight: 400; c
 .removed .stray p { color: var(--ink-2); font-size: 15px; }
 details summary { cursor: pointer; color: var(--ink-2); padding: 4px 0; }
 .ok { font: italic 16px/1.5 var(--serif); color: var(--ink-2); margin: 0; }
+.warn { margin: 16px 0 0; padding: 10px 14px; border-left: 2px solid var(--accent); background: var(--accent-soft); }
+.warn .btn { margin-left: 8px; }
 .ok-note { padding: 10px 14px; border-left: 2px solid var(--add); background: var(--add-soft); margin: 0 0 14px; }
 section > h3 .btn.primary { color: var(--paper); }
 
@@ -188,7 +190,9 @@ const T = {
     noFam: "No document exists in several versions in these folders.", pick: "Pick a document on the left.",
     readingTitle: "Reading your documents…", noRecv: "PDF-only families: documents you most likely received rather than wrote.",
     from: "from", words: "words", time_file: "file date", time_document: "date saved in the document",
-    copies: "copies", missing: "Folder not found:", filter: "Find a document", sameN: n => `${n} identical copies`, merge: "Create a merged copy",
+    copies: "copies", missing: "Folder not found:", filter: "Find a document",
+    suspect: v => `The newest file may be an old copy with a recent date: everything in it is also in v${v}, which has more.`,
+    makeHeadV: v => `Treat v${v} as latest`, sameN: n => `${n} identical copies`, merge: "Create a merged copy",
     mergeHelp: "Writes a new file next to the latest version, with these passages put back where they belong and highlighted. The original is not modified.",
     mergedTo: n => `${n} passage${n > 1 ? "s" : ""} put back, highlighted in yellow, in a new file:`, paths: "Paths below are relative to"
   },
@@ -212,7 +216,9 @@ const T = {
     noFam: "Aucun document n'existe en plusieurs versions dans ces dossiers.", pick: "Choisissez un document à gauche.",
     readingTitle: "Lecture de vos documents…", noRecv: "Familles uniquement en PDF : sans doute des documents reçus plutôt qu'écrits.",
     from: "issue de", words: "mots", time_file: "date du fichier", time_document: "date enregistrée dans le document",
-    copies: "copies", missing: "Dossier introuvable :", filter: "Chercher un document", sameN: n => `${n} copies identiques`, merge: "Créer une copie fusionnée",
+    copies: "copies", missing: "Dossier introuvable :", filter: "Chercher un document",
+    suspect: v => `Le fichier le plus récent est peut-être une vieille copie à date récente : tout son contenu se trouve aussi dans la v${v}, qui en contient davantage.`,
+    makeHeadV: v => `Considérer la v${v} comme la dernière`, sameN: n => `${n} copies identiques`, merge: "Créer une copie fusionnée",
     mergeHelp: "Écrit un nouveau fichier à côté de la dernière version, avec ces passages remis à leur place et surlignés. L'original n'est pas modifié.",
     mergedTo: n => `${n} passage${n > 1 ? "s" : ""} remis en place, surligné${n > 1 ? "s" : ""} en jaune, dans un nouveau fichier :`, paths: "Chemins ci-dessous relatifs à"
   }
@@ -344,6 +350,8 @@ function renderFamily() {
     <p class="lead">${L.latest} · ${L.modified} ${fmt(head.doc_time)} <span style="color:var(--ink-3)">(${L["time_" + head.time_source]})</span></p>
     <p class="lead"><code>${esc(head.files[0].path)}</code></p>
     <p class="lead" style="color:var(--ink-3)">${L.paths} <code>${esc(root)}</code></p>
+    ${f.suspect != null ? `<p class="warn">${L.suspect(f.suspect + 1)}
+      <button class="btn small" data-head="${vs[f.suspect].files[0].id}">${L.makeHeadV(f.suspect + 1)}</button></p>` : ""}
     ${f.stranded.length ? `<section><h3><span>${L.left} · ${f.stranded.length}</span><span>
       ${f.mergeable ? `<button class="btn small primary" id="merge" title="${esc(L.mergeHelp)}">${L.merge}</button> ` : ""}<button class="btn small" id="copyall">${L.copyAll}</button></span></h3>
       <p class="lead" style="margin-bottom:14px">${L.leftHelp}</p><div id="merged"></div>${strays}</section>`

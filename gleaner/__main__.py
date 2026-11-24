@@ -92,6 +92,8 @@ def cmd_show(args):
         print(json.dumps(r, ensure_ascii=False, indent=1))
         return
     print(f"{r['name']}: {len(r['versions'])} versions\n")
+    if r["suspect"] is not None:
+        print(f"! The newest file may be an old copy with a recent date: v{r['suspect'] + 1} holds all of it and more.\n")
     for v in reversed(r["versions"]):
         mark = "●" if v["is_head"] else "○"
         parent = f"  from v{v['parent'] + 1}" if v["parent"] is not None else ""

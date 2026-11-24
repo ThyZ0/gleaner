@@ -108,7 +108,7 @@ def _docx(src, out, steps):
         edits = []
         for idx, new in steps:
             if idx is None:
-                body = xml.index("<w:body>") + len("<w:body>")
+                body = re.search(r"<w:body[^>]*>", xml).end()
                 pos, ppr = body, ""
             else:
                 k = kept[idx]

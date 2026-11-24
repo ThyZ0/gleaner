@@ -190,3 +190,25 @@ def test_lone_files_leave_no_text_in_the_cache_and_secret_names_are_never_read(s
     assert "paras" not in tart and tart["sh"], "a lone document is cached as numbers only"
     final = next(e for p, e in cache.items() if p.endswith("report_final.docx"))
     assert final["paras"], "documents with versions keep their text so rescans stay fast"
+
+
+def test_head_contained_in_a_richer_version_is_suspect(tmp_path, monkeypatch):
+    monkeypatch.setattr(core, "cache_path", lambda: str(tmp_path / "cache.json"))
+    docx(tmp_path / "full.docx", [A, B, C, D, E], "2025-03-01T10:00:00Z")
+    (tmp_path / "old.md").write_text(f"{A}\n\n{B}\n\n{C}\n", encoding="utf-8")  # file date = now: newest
+    docs, _ = core.scan([str(tmp_path)])
+    r = core.report(core.families(docs)[0])
+    head = r["versions"][r["head"]]
+    assert head["files"][0]["path"].endswith("old.md")
+    assert r["versions"][r["suspect"]]["files"][0]["path"].endswith("full.docx")
+
+
+def test_an_old_pdf_downloaded_today_does_not_make_its_version_new(story):
+    # text identical to v1, file date = now: it joins v1 but must not move v1 to the top
+    (story / "report_from_mail.md").write_text(f"{A}\n\n{B}\n\n{C}\n", encoding="utf-8")
+    docs, _ = core.scan([str(story)])
+    r = core.report(core.families(docs)[0])
+    head = r["versions"][r["head"]]
+    assert any(f["path"].endswith("report_final.docx") for f in head["files"])
+    v1 = next(v for v in r["versions"] if any(f["path"].endswith("report_from_mail.md") for f in v["files"]))
+    assert v1["n"] == 0

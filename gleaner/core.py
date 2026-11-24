@@ -355,7 +355,11 @@ def analyse(family, head_id=None):
         # show the file you'd edit: an editable one, preferably the one whose date is saved inside
         # it (Office/ODF) rather than a plain-text export made later
         v["doc"] = max(editable or v["copies"], key=lambda d: (d.time_source == "document", d.time))
-        v["time"] = max(c.time for c in v["copies"])
+        # a date saved inside a Word/LibreOffice file beats a file-system date, which copying,
+        # downloading or exporting resets: an old PDF downloaded today must not make v1 "new"
+        dated = [c for c in v["copies"] if c.time_source == "document"]
+        v["time"] = max(c.time for c in (dated or v["copies"]))
+        v["trusted"] = bool(dated)
     versions.sort(key=lambda v: v["time"])
     for n, v in enumerate(versions):
         v["n"] = n
@@ -420,10 +424,18 @@ def report(family, head_id=None):
                       for c in sorted(v["copies"], key=lambda c: (c is not d, -c.time))],
         })
     stranded = [s for s in strays if s["status"] == "stranded"]
+    # Dates lie: a re-downloaded old attachment is "newest". If everything in the head is also
+    # in another version that has more, that version is probably the real latest.
+    better = [v for v in versions if v is not head and not lost(head["doc"], v["doc"]) and lost(v["doc"], head["doc"])]
+    # Only when the head is dated by the file system: Word and LibreOffice files keep the date they
+    # were saved inside them, so a shorter newer one there is a deliberate cut, not a stale copy.
+    trust = head["trusted"]
+    suspect = max(better, key=lambda v: v["time"])["n"] if better and not received and not trust else None
     name = os.path.basename(head["doc"].path)
     return {
         "name": name, "head": head["n"], "received": received,
         "mergeable": ext(head["doc"]) in (".docx", ".md", ".txt", ".tex"),
+        "suspect": suspect,  # index of a version that holds all of the head and more, or None
         "versions": out_versions, "files": len(family),
         "stranded": stranded, "removed": [s for s in strays if s["status"] == "removed"],
         # left-behind work first, then the most recently edited documents
