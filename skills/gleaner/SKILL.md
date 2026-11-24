@@ -18,11 +18,11 @@ Gleaner is a local, read-only command. It never modifies, moves or deletes files
 3. Answer from the JSON, in the user's words:
    - the latest version: `versions[head].files[0].path` and its date (`doc_time`, `time_source` = "document" means the date saved inside the file, "file" means the file system date, less reliable);
    - how many versions and where they are;
-   - `stranded`: passages written in another copy and missing from the latest. Quote each one, say which file holds it (`versions[source].files[0].path`) and where it belongs (`after`). These are the most important thing to report.
+   - `stranded`: passages written in another copy and missing from the latest. Quote each one, say which file holds it (`versions[source].files[0].path`) and where it belongs (`after`; `slide` for presentations). These are the most important thing to report.
    - `removed`: passages deleted on the latest version's own line, probably on purpose. Mention the count only, unless asked.
 4. If the user thinks another file is the real latest, say so: the app can recompute with another version as latest (`gleaner` opens it; button "Treat as latest").
 5. To put the left-behind passages back, offer `gleaner show "<file>" <folders> --merge`: it writes a NEW file
-   "<latest> (gleaned).docx" (or .md/.txt/.tex) next to the latest version, passages highlighted in yellow, original
+   "<latest> (gleaned).docx" (or .odt/.md/.txt/.tex) next to the latest version, passages highlighted in yellow, original
    untouched. Run it only when the user agrees, and give them the path it prints. Never edit their documents yourself.
 
 For a visual comparison, `gleaner "<folder>"` opens the local app in the browser.

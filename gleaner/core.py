@@ -444,7 +444,7 @@ def report(family, head_id=None):
     name = os.path.basename(head["doc"].path)
     return {
         "name": name, "head": head["n"], "received": received,
-        "mergeable": ext(head["doc"]) in (".docx", ".md", ".txt", ".tex"),
+        "mergeable": ext(head["doc"]) in (".docx", ".odt", ".md", ".txt", ".tex"),
         "suspect": suspect,  # index of a version that holds all of the head and more, or None
         "versions": out_versions, "files": len(family),
         "stranded": stranded, "removed": [s for s in strays if s["status"] == "removed"],

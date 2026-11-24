@@ -277,3 +277,47 @@ def test_pptx_reads_slides_in_showing_order_and_names_the_slide_of_a_stray(tmp_p
     docs, _ = core.scan([str(tmp_path)])
     r = core.report(core.families(docs)[0])
     assert [(s["text"], s.get("slide")) for s in r["stranded"]] == [(P, 2)]
+
+
+def test_merged_copy_can_insert_at_the_very_start_of_a_word_file(story):
+    # regression: a stray character in the <w:body> pattern crashed this case
+    from gleaner import merge
+    head = next(d for d in core.scan([str(story)])[0] if d.path.endswith("report_final.docx"))
+    out = merge.merged_copy(head, [{"text": P, "after": None}])
+    assert extract(out)[0][0] == P
+
+
+def odt(path, paras, date):
+    with zipfile.ZipFile(path, "w") as z:
+        z.writestr(zipfile.ZipInfo("mimetype"), "application/vnd.oasis.opendocument.text")
+        body = "".join(f'<text:p text:style-name="P1">{p}</text:p>' for p in paras)
+        z.writestr("content.xml",
+                   '<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" '
+                   'xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" '
+                   'xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" '
+                   'xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0">'
+                   f"<office:automatic-styles/><office:body><office:text>{body}</office:text></office:body>"
+                   "</office:document-content>")
+        z.writestr("meta.xml",
+                   '<office:document-meta xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" '
+                   'xmlns:dc="http://purl.org/dc/elements/1.1/"><office:meta>'
+                   f"<dc:date>{date}</dc:date></office:meta></office:document-meta>")
+
+
+def test_merged_copy_of_a_libreoffice_file(tmp_path, monkeypatch):
+    from gleaner import merge
+    monkeypatch.setattr(core, "cache_path", lambda: str(tmp_path / "cache.json"))
+    odt(tmp_path / "notes.odt", [A, B, C], "2025-01-01T10:00:00")
+    odt(tmp_path / "notes_sam.odt", [A, B, P, C], "2025-01-02T10:00:00")
+    odt(tmp_path / "notes_v2.odt", [A, B, C, D], "2025-01-03T10:00:00")
+    docs, _ = core.scan([str(tmp_path)])
+    fam = core.families(docs)[0]
+    r = core.report(fam)
+    assert r["mergeable"] and [s["text"] for s in r["stranded"]] == [P]
+    _, head, _ = core.analyse(fam)
+    out = merge.merged_copy(head["doc"], r["stranded"])
+    paras, t, src = extract(out)
+    assert paras == [A, B, P, C, D] and src == "document" and t > head["doc"].time
+    with zipfile.ZipFile(out) as z:
+        assert z.namelist()[0] == "mimetype" and z.getinfo("mimetype").compress_type == zipfile.ZIP_STORED
+        assert "GleanerHighlight" in z.read("content.xml").decode()

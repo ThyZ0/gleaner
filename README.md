@@ -12,7 +12,7 @@ Duplicate finders tell you which files are *identical*. That is the easy case. G
 - **Families.** It reads the text of your Word, PowerPoint, LibreOffice, PDF, Markdown, LaTeX and text files and groups the ones that are versions of each other, whatever their names and folders. A `.docx` and its PDF export count as one version.
 - **Lineage.** It rebuilds who descends from whom: each version's parent is the older version it most resembles. Side copies (the one you emailed, the one on the USB stick) show up as branches.
 - **Left behind.** The part the duplicate finders we looked at do not do. Gleaner looks for paragraphs that were written in a side copy and **never made it into the latest version**, for example the section your teammate added to the copy you sent them, after you had already moved on with your own. It tells you where each one belongs ("belongs after: …").
-- **Merged copy.** One click writes `Report_FINAL (gleaned).docx` next to the latest version, with those passages put back where they belong, highlighted in yellow and in the style of the paragraph they follow. Review, keep or delete them in Word. Also for `.md`, `.txt` and `.tex`.
+- **Merged copy.** One click writes `Report_FINAL (gleaned).docx` next to the latest version, with those passages put back where they belong, highlighted in yellow and in the style of the paragraph they follow. Review, keep or delete them in Word. Also for LibreOffice `.odt`, `.md`, `.txt` and `.tex`. In presentations, each passage says which slide it is on.
 - **Deleted on purpose** is kept apart: a paragraph removed on the latest version's own line was probably cut deliberately, so it is listed, folded away, and not raised as a problem.
 - **Compare** any two versions, paragraph by paragraph and word by word.
 
@@ -78,7 +78,8 @@ The repository is also a Claude Code plugin. Its skill lets Claude answer questi
 
 - Matching is on words, not meaning: a paragraph rewritten from scratch counts as deleted plus added.
 - Scanned PDFs without a text layer cannot be compared. Encrypted files are listed as unreadable.
-- Excel files, images and old binary Word files (`.doc`, before 2007) are not read.
+- Excel files, images and old binary Word files (`.doc`, before 2007) are not read. Spreadsheets are left out on purpose: they are grids of numbers, not paragraphs, and "a passage left behind" means nothing there.
+- The merged copy cannot be written into PowerPoint files: the passages are shown with their slide number, to paste back by hand.
 - Dates are only as good as what the files carry. A copied or downloaded file keeps the date saved inside it (Office, LibreOffice), but plain text and PDF files only have the file's date, which copies can change.
 - Very short documents (under about 20 words in common) only group when identical.
 
