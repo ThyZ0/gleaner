@@ -4,6 +4,7 @@ The original is never touched. In a .docx the inserted passages are highlighted 
 the style of the paragraph they follow, so they are easy to review, keep or delete in Word.
 """
 import os
+from datetime import datetime, timezone
 import re
 import zipfile
 from xml.sax.saxutils import escape
@@ -118,7 +119,11 @@ def _docx(src, out, steps):
             edits.append((pos, "".join(_new_paragraph(t, ppr) for t in new)))
         for pos, chunk in sorted(edits, reverse=True):
             xml = xml[:pos] + chunk + xml[pos:]
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ").encode()
         with zipfile.ZipFile(out, "x", zipfile.ZIP_DEFLATED) as w:
             for info in z.infolist():
                 data = xml.encode("utf-8") if info.filename == "word/document.xml" else z.read(info.filename)
+                if info.filename == "docProps/core.xml":
+                    # saved now, as Word would do: otherwise it ties with the original for "latest"
+                    data = re.sub(rb"(<dcterms:modified[^>]*>)[^<]*(<)", rb"\g<1>" + now + rb"\g<2>", data)
                 w.writestr(info, data)

@@ -221,3 +221,15 @@ def test_diff_between_differently_cut_files_shows_only_real_changes():
     changed = [x for x in blocks if x["t"] not in ("same", "skip")]
     assert len(changed) == 1 and changed[0]["t"] == "mod"
     assert any(o == "+" and "almost" in w for o, w in changed[0]["words"])
+
+
+def test_merged_copy_is_dated_now_so_it_becomes_the_latest(story):
+    from gleaner import merge
+    docs, _ = core.scan([str(story)])
+    versions, head, strays = core.analyse(core.families(docs)[0])
+    head_doc = next(c for c in head["copies"] if c.path.endswith(".docx"))
+    out = merge.merged_copy(head_doc, [s for s in strays if s["status"] == "stranded"])
+    _, t, src = extract(out)
+    assert src == "document" and t > head_doc.time
+    r = core.report(core.families(core.scan([str(story)])[0])[0])
+    assert r["versions"][r["head"]]["files"][0]["path"] == out and not r["stranded"]
