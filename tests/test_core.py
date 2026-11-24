@@ -152,3 +152,30 @@ def test_page_footers_are_layout_but_two_similar_rows_are_not():
              "First run water mass 807 grams measured", "Second run water mass 606 grams measured"]
     d = core.Doc(0, "x.pdf", 0, 0, "file", paras)
     assert {paras[i] for i in d.layout} == {p for p in paras if "Page" in p}
+
+
+def test_merged_copy_puts_passages_back_without_touching_the_original(story):
+    from gleaner import merge
+    docs, _ = core.scan([str(story)])
+    fam = core.families(docs)[0]
+    versions, head, strays = core.analyse(fam)
+    head_doc = next(c for c in head["copies"] if c.path.endswith(".docx"))
+    before = open(head_doc.path, "rb").read()
+    stranded = [s for s in strays if s["status"] == "stranded"]
+    out = merge.merged_copy(head_doc, stranded)
+    assert open(head_doc.path, "rb").read() == before
+    assert out.endswith("report_final (gleaned).docx")
+    paras, _, _ = extract(out)
+    assert paras == [A, B2, P, D, E], "after the paragraph that replaced its anchor"
+    with zipfile.ZipFile(out) as z:
+        assert z.testzip() is None
+        assert '<w:highlight w:val="yellow"/>' in z.read("word/document.xml").decode()
+    assert merge.merged_copy(head_doc, stranded).endswith("(gleaned 2).docx"), "never overwrites"
+
+
+def test_merged_copy_of_a_text_file(tmp_path):
+    from gleaner import merge
+    (tmp_path / "notes.md").write_text(f"{A}\n\n{B}\n\n{C}\n", encoding="utf-8")
+    head = core.Doc(0, str(tmp_path / "notes.md"), 0, 0, "file", [A, B, C])
+    out = merge.merged_copy(head, [{"text": P, "after": B}, {"text": E, "after": None}])
+    assert open(out, encoding="utf-8").read().split("\n\n") == [E, A, B, P, C + "\n"]

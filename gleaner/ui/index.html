@@ -104,6 +104,8 @@ section > h3 .btn { text-transform: none; letter-spacing: 0; font-weight: 400; c
 .removed .stray p { color: var(--ink-2); font-size: 15px; }
 details summary { cursor: pointer; color: var(--ink-2); padding: 4px 0; }
 .ok { font: italic 16px/1.5 var(--serif); color: var(--ink-2); margin: 0; }
+.ok-note { padding: 10px 14px; border-left: 2px solid var(--add); background: var(--add-soft); margin: 0 0 14px; }
+section > h3 .btn.primary { color: var(--paper); }
 
 /* diff */
 .diffhead { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; color: var(--ink-2); flex-wrap: wrap; }
@@ -181,7 +183,9 @@ const T = {
     noFam: "No document exists in several versions in these folders.", pick: "Pick a document on the left.",
     readingTitle: "Reading your documents…", noRecv: "PDF-only families: documents you most likely received rather than wrote.",
     from: "from", words: "words", time_file: "file date", time_document: "date saved in the document",
-    copies: "copies", missing: "Folder not found:", sameN: n => `${n} identical copies`, paths: "Paths below are relative to"
+    copies: "copies", missing: "Folder not found:", sameN: n => `${n} identical copies`, merge: "Create a merged copy",
+    mergeHelp: "Writes a new file next to the latest version, with these passages put back where they belong and highlighted. The original is not modified.",
+    mergedTo: n => `${n} passage${n > 1 ? "s" : ""} put back, highlighted in yellow, in a new file:`, paths: "Paths below are relative to"
   },
   fr: {
     tagline: "toutes les versions de vos documents, et ce qui est resté en chemin", folders: "Dossiers à lire, séparés par ;",
@@ -203,7 +207,9 @@ const T = {
     noFam: "Aucun document n'existe en plusieurs versions dans ces dossiers.", pick: "Choisissez un document à gauche.",
     readingTitle: "Lecture de vos documents…", noRecv: "Familles uniquement en PDF : sans doute des documents reçus plutôt qu'écrits.",
     from: "issue de", words: "mots", time_file: "date du fichier", time_document: "date enregistrée dans le document",
-    copies: "copies", missing: "Dossier introuvable :", sameN: n => `${n} copies identiques`, paths: "Chemins ci-dessous relatifs à"
+    copies: "copies", missing: "Dossier introuvable :", sameN: n => `${n} copies identiques`, merge: "Créer une copie fusionnée",
+    mergeHelp: "Écrit un nouveau fichier à côté de la dernière version, avec ces passages remis à leur place et surlignés. L'original n'est pas modifié.",
+    mergedTo: n => `${n} passage${n > 1 ? "s" : ""} remis en place, surligné${n > 1 ? "s" : ""} en jaune, dans un nouveau fichier :`, paths: "Chemins ci-dessous relatifs à"
   }
 };
 const L = T[(navigator.language || "en").slice(0, 2)] || T.en;
@@ -262,8 +268,9 @@ function renderEmpty(scanning) {
     ${!has ? `<p>${L.emptyText}</p>` : ""}<p>${L.emptyLocal}</p></div></div>`;
 }
 
+let headId = null;
 async function openFamily(i, head) {
-  current = i;
+  current = i; headId = head ?? null;
   history.replaceState(null, "", `#f=${i}`);
   renderList();
   family = await api(`/api/family?i=${i}${head != null ? `&head=${head}` : ""}`);
@@ -331,8 +338,9 @@ function renderFamily() {
     <p class="lead">${L.latest} · ${L.modified} ${fmt(head.doc_time)} <span style="color:var(--ink-3)">(${L["time_" + head.time_source]})</span></p>
     <p class="lead"><code>${esc(head.files[0].path)}</code></p>
     <p class="lead" style="color:var(--ink-3)">${L.paths} <code>${esc(root)}</code></p>
-    ${f.stranded.length ? `<section><h3><span>${L.left} · ${f.stranded.length}</span><button class="btn small" id="copyall">${L.copyAll}</button></h3>
-      <p class="lead" style="margin-bottom:14px">${L.leftHelp}</p>${strays}</section>`
+    ${f.stranded.length ? `<section><h3><span>${L.left} · ${f.stranded.length}</span><span>
+      ${f.mergeable ? `<button class="btn small primary" id="merge" title="${esc(L.mergeHelp)}">${L.merge}</button> ` : ""}<button class="btn small" id="copyall">${L.copyAll}</button></span></h3>
+      <p class="lead" style="margin-bottom:14px">${L.leftHelp}</p><div id="merged"></div>${strays}</section>`
       : `<section><h3>${L.left}</h3><p class="ok">${L.allIn}</p></section>`}
     <section><h3>${L.lineage} · ${L.versions(vs.length)}</h3><p class="lead" style="margin-bottom:12px">${L.lineageHelp}</p>
       <div class="lineage" id="lineage">${rows}</div></section>
@@ -351,6 +359,16 @@ function renderFamily() {
   $("ca").onchange = e => { compareA = +e.target.value; diff(); };
   $("cb").onchange = e => { compareB = +e.target.value; markSel(); diff(); };
   if ($("copyall")) $("copyall").onclick = () => copy(f.stranded.map(s => s.text).join("\n\n"));
+  if ($("merge")) $("merge").onclick = async () => {
+    $("merge").disabled = true;
+    try {
+      const r = await api("/api/merge", {i: current, head: headId});
+      $("merged").innerHTML = `<p class="lead ok-note">${L.mergedTo(r.count)} <code>${esc(r.path)}</code>
+        <button class="btn small" id="showmerged">${L.open}</button></p>`;
+      $("showmerged").onclick = () => api("/api/reveal", {path: r.path});
+    } catch (err) { toast(err.message); }
+    $("merge").disabled = false;
+  };
 }
 
 function markSel() { document.querySelectorAll(".row").forEach(r => r.classList.toggle("sel", +r.dataset.n === compareB)); }

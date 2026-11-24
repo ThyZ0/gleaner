@@ -375,6 +375,7 @@ def report(family, head_id=None):
     name = os.path.basename(head["doc"].path)
     return {
         "name": name, "head": head["n"], "received": received,
+        "mergeable": ext(head["doc"]) in (".docx", ".md", ".txt", ".tex"),
         "versions": out_versions, "files": len(family),
         "stranded": stranded, "removed": [s for s in strays if s["status"] == "removed"],
         # left-behind work first, then the most recently edited documents

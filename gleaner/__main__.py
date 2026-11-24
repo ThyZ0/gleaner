@@ -2,6 +2,7 @@
 gleaner FOLDER...           open the app on these folders
 gleaner scan [FOLDER...]    list document families in the terminal
 gleaner show FILE           versions of one document, and what never reached the latest
+gleaner show FILE --merge   also write "<latest> (gleaned)" with those passages put back
 add --json to scan/show for machine-readable output (used by the Claude Code skill)."""
 import argparse
 import json
@@ -9,7 +10,7 @@ import os
 import sys
 from datetime import datetime
 
-from . import __version__, core
+from . import __version__, core, merge
 from .server import default_roots, serve
 
 
@@ -81,6 +82,12 @@ def cmd_show(args):
                 print("Copies elsewhere? Add the folders to search: gleaner show FILE FOLDER...")
         return
     r = core.report(fam)
+    if args.merge and r["stranded"]:
+        _, head, _ = core.analyse(fam)
+        try:
+            r["merged"] = merge.merged_copy(head["doc"], r["stranded"])
+        except ValueError as e:
+            sys.exit(str(e))
     if args.json:
         print(json.dumps(r, ensure_ascii=False, indent=1))
         return
@@ -101,6 +108,8 @@ def cmd_show(args):
         print("\nEverything written in the other copies is in the latest version (or was deleted on purpose along the way).")
     if r["removed"]:
         print(f"\n{len(r['removed'])} passage(s) were deleted along the way (the app shows them).")
+    if r.get("merged"):
+        print(f"\nWrote {r['merged']}\n(the passages are highlighted; the original is unchanged)")
 
 
 def main(argv=None):
@@ -115,6 +124,8 @@ def main(argv=None):
         p.add_argument("--json", action="store_true")
         if argv[0] == "scan":
             p.add_argument("--all", action="store_true", help="include PDF-only families")
+        else:
+            p.add_argument("--merge", action="store_true", help="write a copy of the latest with the passages put back")
         args = p.parse_args(argv[1:])
         args.folders = [os.path.abspath(f) for f in args.folders]
         return cmd_scan(args) if argv[0] == "scan" else cmd_show(args)

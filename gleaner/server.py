@@ -8,7 +8,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlparse
 
-from . import core
+from . import core, merge
 
 UI = os.path.join(os.path.dirname(__file__), "ui")
 
@@ -32,6 +32,7 @@ class State:
         self.reports = []
         self.finished = None
         self.took = None
+        self.created = set()  # copies written by "merge" this session: the only extra paths we reveal
 
     def start_scan(self, roots):
         with self.lock:
@@ -139,10 +140,26 @@ def make_handler(state, port):
                 return self._send(200, {"started": state.start_scan(roots)})
             if self.path == "/api/reveal":
                 doc = self._doc(str(body.get("id")))
-                if not doc:  # only files found by the scan, never an arbitrary path
+                path = doc.path if doc else body.get("path")
+                if not doc and path not in state.created:  # never an arbitrary path
                     return self._send(404, {"error": "no such document"})
-                reveal(doc.path)
+                reveal(path)
                 return self._send(200, {"ok": True})
+            if self.path == "/api/merge":
+                fam = self._family(str(body.get("i")))
+                if fam is None:
+                    return self._send(404, {"error": "no such family"})
+                head_id = body.get("head")
+                _, head, strays = core.analyse(fam, head_id if isinstance(head_id, int) else None)
+                stranded = [s for s in strays if s["status"] == "stranded"]
+                if not stranded:
+                    return self._send(400, {"error": "nothing left behind"})
+                try:
+                    out = merge.merged_copy(head["doc"], stranded)
+                except (ValueError, OSError) as e:
+                    return self._send(400, {"error": str(e)})
+                state.created.add(out)
+                return self._send(200, {"path": out, "count": len(stranded)})
             self._send(404, {"error": "not found"})
 
         def _family(self, i):
