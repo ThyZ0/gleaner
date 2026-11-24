@@ -62,7 +62,7 @@ The repository is also a Claude Code plugin. Its skill lets Claude answer questi
 
 ## How it works
 
-1. **Reading.** Office and LibreOffice files are zip archives of XML, read with the standard library. PDFs have no paragraphs, so they are rebuilt from lines ending a sentence. Cloud-only OneDrive files are skipped (opening them would download them), as are program logs and software licence files. Text and modification date are cached in `~/.gleaner/cache.json`; only new or changed files are read again, in parallel.
+1. **Reading.** Office and LibreOffice files are zip archives of XML, read with the standard library. PDFs have no paragraphs, so they are rebuilt from lines ending a sentence. Cloud-only OneDrive files are skipped (opening them would download them), as are program logs, plain-text files over 1 MB, software licence files, and files whose name says they hold passwords or credentials (never opened). Only new or changed files are read again, in parallel; the cache in `~/.gleaner/cache.json` keeps a numeric fingerprint of each file, and the text only of documents that have other versions, so a lone private note leaves no readable trace there.
 2. **Families.** Each document becomes a set of 5-word runs. Two documents are versions of each other when they share a large part of their text (Jaccard ≥ 0.35), or when one contains almost all of the other (≥ 80 %, so a two-page draft joins its ten-page final) while still sharing a minimum overall. Shared boilerplate (a school cover page, exam instructions) is not enough. Candidate pairs come from a fixed sample of one run in eight, then are checked on the full text.
 3. **Versions.** Files with the same text, or the same text in another format, are one version. Its date is the date saved inside the document when there is one (Word and LibreOffice keep it), otherwise the file's date.
 4. **Lineage.** The parent of each version is the most similar older version. The latest version and its ancestors form the main line.
@@ -82,7 +82,7 @@ The repository is also a Claude Code plugin. Its skill lets Claude answer questi
 
 ## Measured
 
-On one student's real folders (Documents, Desktop, OneDrive: 743 files, 702 with text): first scan 22.6 s, later scans 1.4 s, 101 families, 94 MB of memory. Among them, the two versions of an English oral presentation script (−412 words between them) and of its slides, a group lab report with its PDF export, and dozens of exam subjects paired with their corrections in the Received tab. No passage left behind was found in that student's own documents.
+On one student's real folders (Documents, Desktop, OneDrive: 743 files, 702 with text): first scan 22.7 s, later scans 1.9 s, 102 families, cache 7.6 MB. Among them, the two versions of an English oral presentation script (−412 words between them) and of its slides, a group lab report with its PDF export, and dozens of exam subjects paired with their corrections in the Received tab. No passage left behind was found in that student's own documents.
 
 `bench/scale.py` measures accuracy on synthetic documents with a known history: families with a main line of edited versions, a side copy that adds one to three paragraphs never merged back, sometimes an export with paragraphs cut differently, plus unrelated documents sharing a common template paragraph. Results (`python bench/scale.py 200 1000`):
 

@@ -20,6 +20,8 @@ SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "site-packa
              "appdata", ".cache", ".tox", "dist", "build", ".idea", ".vscode"}
 # legal boilerplate shipped with software: shared by thousands of files, written by nobody here
 SKIP_NAMES = re.compile(r"(.*[-_.])?(licen[cs]e|copying|notices?|third[-_ ]?party[-_ ]?notices|authors|patents)(\.(txt|md))?$", re.I)
+# files whose name says they hold secrets are never opened
+PRIVATE_NAMES = re.compile(r".*(passwords?|passwd|mots?[-_ ]?de[-_ ]?passe|credentials?|identifiants)", re.I)
 MIN_WORDS = 4          # shorter paragraphs (titles, page numbers) are layout, not work
 DOC_SHINGLE = 5        # words per shingle when comparing whole documents
 PARA_SHINGLE = 3       # words per shingle when comparing paragraphs
@@ -39,25 +41,50 @@ def shingles(ws, k):
     return {crc32(" ".join(ws[i:i + k]).encode()) for i in range(len(ws) - k + 1)}
 
 
+def _written(paras):
+    """Indexes of paragraphs that are writing, and all their words in order."""
+    content, all_words = [], []
+    for i, p in enumerate(paras):
+        ws = words(p)
+        prose = sum(1 for w in ws if not any(c.isdigit() for c in w))
+        # a row of a data table is not writing, and PDFs lay tables out differently anyway
+        if prose >= MIN_WORDS and prose >= len(ws) / 2:
+            content.append(i)
+            all_words.extend(ws)
+    return content, all_words
+
+
+EMPTY = hashlib.sha1(b"").hexdigest()
+
+
 class Doc:
     """One readable file. Only a fixed 1-in-4 sample of its 5-word runs is kept for grouping
     (sampling by hash value keeps Jaccard and containment estimates unbiased); the heavier
-    per-paragraph data is computed on first use, i.e. only for files that have other versions."""
+    per-paragraph data is computed on first use, i.e. only for files that have other versions.
+    Built either from its paragraphs, or from the cached sample and digest alone, in which case
+    the text is read again from the file only if it turns out to be needed."""
 
-    def __init__(self, id, path, size, time, time_source, paras):
+    def __init__(self, id, path, size, time, time_source, paras=None, sh=None, digest=None):
         self.id, self.path, self.size = id, path, size
-        self.time, self.time_source, self.paras = time, time_source, paras
-        self.content = []  # indexes of paragraphs long enough to count as written work
-        all_words = []
-        for i, p in enumerate(paras):
-            ws = words(p)
-            prose = sum(1 for w in ws if not any(c.isdigit() for c in w))
-            # a row of a data table is not writing, and PDFs lay tables out differently anyway
-            if prose >= MIN_WORDS and prose >= len(ws) / 2:
-                self.content.append(i)
-                all_words.extend(ws)
+        self.time, self.time_source = time, time_source
+        if paras is None:
+            self.sh, self.digest = set(sh), digest
+            return
+        self.paras = paras
+        self.content, all_words = _written(paras)
         self.sh = {h for h in shingles(all_words, DOC_SHINGLE) if h & 3 == 0} if len(all_words) >= DOC_SHINGLE else set()
         self.digest = hashlib.sha1(" ".join(all_words).encode()).hexdigest()
+
+    @cached_property
+    def paras(self):
+        try:  # unchanged since the scan checked its size and date; if it vanished since, no text
+            return extract(self.path)[0]
+        except (Unreadable, OSError):
+            return []
+
+    @cached_property
+    def content(self):
+        return _written(self.paras)[0]
 
     @cached_property
     def norm(self):
@@ -118,7 +145,7 @@ def walk(roots):
             dirnames[:] = [d for d in dirnames if d.lower() not in SKIP_DIRS and not d.startswith(".")]
             for name in filenames:
                 if (name.startswith("~$") or os.path.splitext(name)[1].lower() not in SUPPORTED
-                        or SKIP_NAMES.match(name)):
+                        or SKIP_NAMES.match(name) or PRIVATE_NAMES.match(name)):
                     continue
                 path = os.path.normpath(os.path.join(dirpath, name))
                 if path in seen:
@@ -174,13 +201,23 @@ def scan(roots, progress=None, use_cache=True):
                     progress(done, len(files), t[0])
     new_cache, docs, problems = {}, [], []
     for path, st in files:
-        entry = new_cache[path] = entries[path]
-        if "err" in entry:
-            problems.append({"path": path, "reason": entry["err"]})
-        elif entry["paras"]:
-            docs.append(Doc(len(docs), path, st.st_size, entry["time"], entry["src"], entry["paras"]))
+        e = entries[path]
+        if "err" in e:
+            problems.append({"path": path, "reason": e["err"]})
+            new_cache[path] = e
+            continue
+        d = Doc(len(docs), path, st.st_size, e["time"], e["src"], e.get("paras"), e.get("sh"), e.get("digest"))
+        new_cache[path] = {"size": e["size"], "mtime": e["mtime"], "time": e["time"], "src": e["src"],
+                           "sh": sorted(d.sh), "digest": d.digest}
+        if d.digest != EMPTY:
+            docs.append(d)
     if progress:
         progress(len(files), len(files), "")
+    # Text is cached only for documents that have other versions: a lone file (a notes.txt
+    # full of passwords, say) leaves nothing but numbers behind in the cache.
+    for f in families(docs):
+        for d in f:
+            new_cache[d.path]["paras"] = d.paras
     if use_cache:
         # keep entries for folders not scanned this time, so scanning one folder doesn't wipe the rest
         roots_n = [os.path.normcase(os.path.normpath(r)) for r in roots]
@@ -214,8 +251,20 @@ def related(a, b):
     return jac >= 0.35 or (contain >= 0.8 and jac >= 0.12)
 
 
+_last = [None, None]
+
+
 def families(docs):
-    """Group documents into families of versions. Returns list of lists of Doc (size >= 2)."""
+    """Group documents into families of versions. Returns list of lists of Doc (size >= 2).
+    The same list asked twice (scan, then the caller) is grouped once."""
+    if _last[0] is docs:
+        return _last[1]
+    result = _families(docs)
+    _last[:] = [docs, result]
+    return result
+
+
+def _families(docs):
     parent = list(range(len(docs)))
 
     def find(x):
@@ -227,8 +276,7 @@ def families(docs):
     # identical text: always the same family, even for very short files
     by_digest = defaultdict(list)
     for d in docs:
-        if d.content:
-            by_digest[d.digest].append(d.id)
+        by_digest[d.digest].append(d.id)
     for ids in by_digest.values():
         for i in ids[1:]:
             parent[find(i)] = find(ids[0])

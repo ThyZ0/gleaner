@@ -18,6 +18,7 @@ DC = "{http://purl.org/dc/elements/1.1/}"
 ODF_META = "{urn:oasis:names:tc:opendocument:xmlns:meta:1.0}"
 
 SUPPORTED = {".docx", ".pptx", ".odt", ".odp", ".txt", ".md", ".tex", ".pdf"}
+MAX_TEXT = 1024 * 1024
 MAX_BYTES = 60 * 1024 * 1024  # shortcut: larger files are skipped; raise if real reports are bigger
 
 
@@ -96,6 +97,8 @@ def _odf_time(z):
 
 
 def _plain(path):
+    if os.path.getsize(path) > MAX_TEXT:
+        return []  # a megabyte of plain text is a program's output or a data dump, not a document
     with open(path, "rb") as f:
         raw = f.read()
     for enc in ("utf-8", "cp1252"):

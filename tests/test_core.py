@@ -179,3 +179,14 @@ def test_merged_copy_of_a_text_file(tmp_path):
     head = core.Doc(0, str(tmp_path / "notes.md"), 0, 0, "file", [A, B, C])
     out = merge.merged_copy(head, [{"text": P, "after": B}, {"text": E, "after": None}])
     assert open(out, encoding="utf-8").read().split("\n\n") == [E, A, B, P, C + "\n"]
+
+
+def test_lone_files_leave_no_text_in_the_cache_and_secret_names_are_never_read(story):
+    (story / "my passwords.txt").write_text("bank account pass is hunter2 and the mail one is the same\n", encoding="utf-8")
+    core.scan([str(story)])
+    cache = core.load_cache()
+    assert not any("passwords" in p for p in cache)
+    tart = next(e for p, e in cache.items() if p.endswith("tart.docx"))
+    assert "paras" not in tart and tart["sh"], "a lone document is cached as numbers only"
+    final = next(e for p, e in cache.items() if p.endswith("report_final.docx"))
+    assert final["paras"], "documents with versions keep their text so rescans stay fast"
