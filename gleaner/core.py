@@ -9,6 +9,7 @@ import stat
 import tempfile
 from collections import defaultdict
 from functools import cached_property
+from zlib import crc32
 
 from .extract import SUPPORTED, Unreadable, extract
 
@@ -31,9 +32,11 @@ def words(text):
 
 
 def shingles(ws, k):
+    """Hashes of every run of k words. CRC32, not hash(): Python randomises hash() per process,
+    and the 1-in-4 sample must pick the same runs on every launch for results to be reproducible."""
     if len(ws) < k:
-        return {hash(tuple(ws))} if ws else set()
-    return {hash(tuple(ws[i:i + k])) for i in range(len(ws) - k + 1)}
+        return {crc32(" ".join(ws).encode())} if ws else set()
+    return {crc32(" ".join(ws[i:i + k]).encode()) for i in range(len(ws) - k + 1)}
 
 
 class Doc:
@@ -256,9 +259,23 @@ def contained(sh, big):
     return len(sh & big) / len(sh) if sh else 0.0
 
 
+def lost(a, b):
+    """True if some paragraph of `a` is missing from `b`. A paragraph repeated in `a` (a PDF's
+    running header on every page) is layout and is ignored."""
+    seen = defaultdict(int)
+    for i in a.content:
+        seen[a.norm[i]] += 1
+    return any(seen[a.norm[i]] == 1 and contained(a.psh[i], b.allsh) < KEPT for i in a.content)
+
+
 def same_content(a, b):
-    """Identical text, or the same text in another format (a .docx and its PDF export)."""
-    return a.digest == b.digest or (contained(a.allsh, b.allsh) >= 0.9 and contained(b.allsh, a.allsh) >= 0.9)
+    """Identical text, or the same text in another format (a .docx and its PDF export).
+    Not 'almost the same': one added paragraph in a long report is exactly what must not vanish."""
+    if a.digest == b.digest:
+        return True
+    if contained(a.allsh, b.allsh) < 0.6 or contained(b.allsh, a.allsh) < 0.6:
+        return False  # cheap rejection before the per-paragraph check
+    return not lost(a, b) and not lost(b, a)
 
 
 def analyse(family, head_id=None):

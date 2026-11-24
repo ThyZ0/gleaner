@@ -80,7 +80,20 @@ The repository is also a Claude Code plugin. Its skill lets Claude answer questi
 
 ## Measured
 
-On one student's real folders (Documents, Desktop, OneDrive: 743 files, 702 with text): first scan 22.6 s, later scans 1.4 s, 101 families, 94 MB of memory. Among them, the two versions of an English oral presentation script (−412 words between them) and of its slides, a group lab report with its PDF export, and dozens of exam subjects paired with their corrections in the Received tab. No passage left behind was found in that student's own documents. The left-behind detection is checked on the reproducible scenario in `tests/` and `demo/`.
+On one student's real folders (Documents, Desktop, OneDrive: 743 files, 702 with text): first scan 22.6 s, later scans 1.4 s, 101 families, 94 MB of memory. Among them, the two versions of an English oral presentation script (−412 words between them) and of its slides, a group lab report with its PDF export, and dozens of exam subjects paired with their corrections in the Received tab. No passage left behind was found in that student's own documents.
+
+`bench/scale.py` measures accuracy on synthetic documents with a known history: families with a main line of edited versions, a side copy that adds one to three paragraphs never merged back, sometimes an export with paragraphs cut differently, plus unrelated documents sharing a common template paragraph. Results (`python bench/scale.py 200 1000`):
+
+| | |
+|---|---|
+| families found exactly | 200 / 200 |
+| unrelated documents wrongly grouped | 0 / 1000 |
+| left-behind passages found (recall) | 382 / 382 |
+| flags that are real (precision) | 382 / 383 |
+
+This benchmark caught a real bug: an early rule treated two files as "the same text" above 90 % overlap, so a side copy adding one paragraph to a long report was merged into its original and the paragraph vanished (recall was 51 %). Two files are now the same version only if no paragraph of either is missing from the other.
+
+Synthetic text is not real writing, so these numbers say the logic is right, not that every real case will be.
 
 ## Develop
 

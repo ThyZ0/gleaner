@@ -115,3 +115,31 @@ def test_word_diff():
 def test_skip_names_keeps_french_licence_reports():
     assert core.SKIP_NAMES.match("LICENSE.txt") and core.SKIP_NAMES.match("ThirdPartyNotices.txt")
     assert not core.SKIP_NAMES.match("licence_rapport.docx")
+
+
+def test_one_added_paragraph_in_a_long_report_is_not_a_copy(tmp_path, monkeypatch):
+    # regression: a 90% "same text" rule merged this side copy into its original and hid the paragraph
+    monkeypatch.setattr(core, "cache_path", lambda: str(tmp_path / "cache.json"))
+    body = [f"Section {i}: the measured drag at configuration number {i} matches the expected value within tolerance."
+            for i in range(40)]
+    docx(tmp_path / "long.docx", body, "2025-02-01T10:00:00Z")
+    docx(tmp_path / "long_side.docx", body[:20] + [P] + body[20:], "2025-02-02T10:00:00Z")
+    docx(tmp_path / "long_v2.docx", body + [E], "2025-02-03T10:00:00Z")
+    docs, _ = core.scan([str(tmp_path)])
+    r = core.report(core.families(docs)[0])
+    assert len(r["versions"]) == 3
+    assert [s["text"] for s in r["stranded"]] == [P]
+    assert r["stranded"][0]["after"] == body[19]
+
+
+def test_pdf_running_header_does_not_split_an_export(story):
+    # same text as the final, plus a header line repeated on each "page": still the same version
+    final = [A, B2, D, E]
+    paras = []
+    for p in final:
+        paras += ["Drone project report page header", p]
+    (story / "report_final.txt").write_text("\n\n".join(paras), encoding="utf-8")
+    docs, _ = core.scan([str(story)])
+    r = core.report(core.families(docs)[0])
+    head = r["versions"][r["head"]]
+    assert {os.path.basename(f["path"]) for f in head["files"]} >= {"report_final.docx", "report_final.txt"}
