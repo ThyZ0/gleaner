@@ -80,7 +80,7 @@ The repository is also a Claude Code plugin. Its skill lets Claude answer questi
 
 ## Measured
 
-On one student's real folders (Documents, Desktop, OneDrive: 743 files, 702 with text): first scan 22.6 s, later scans 3.5 s, 103 families. Among them, the two versions of an English oral presentation script (−412 words between them) and of its slides, a group lab report with its PDF export, and dozens of exam subjects paired with their corrections in the Received tab. No passage left behind was found in that student's own documents. The left-behind detection is checked on the reproducible scenario in `tests/` and `demo/`.
+On one student's real folders (Documents, Desktop, OneDrive: 743 files, 702 with text): first scan 22.6 s, later scans 1.4 s, 101 families, 94 MB of memory. Among them, the two versions of an English oral presentation script (−412 words between them) and of its slides, a group lab report with its PDF export, and dozens of exam subjects paired with their corrections in the Received tab. No passage left behind was found in that student's own documents. The left-behind detection is checked on the reproducible scenario in `tests/` and `demo/`.
 
 ## Develop
 

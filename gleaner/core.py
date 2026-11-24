@@ -8,6 +8,7 @@ import re
 import stat
 import tempfile
 from collections import defaultdict
+from functools import cached_property
 
 from .extract import SUPPORTED, Unreadable, extract
 
@@ -36,27 +37,37 @@ def shingles(ws, k):
 
 
 class Doc:
-    __slots__ = ("id", "path", "size", "time", "time_source", "paras", "content", "norm", "psh",
-                 "sh", "allsh", "digest")
+    """One readable file. Only a fixed 1-in-4 sample of its 5-word runs is kept for grouping
+    (sampling by hash value keeps Jaccard and containment estimates unbiased); the heavier
+    per-paragraph data is computed on first use, i.e. only for files that have other versions."""
 
     def __init__(self, id, path, size, time, time_source, paras):
         self.id, self.path, self.size = id, path, size
         self.time, self.time_source, self.paras = time, time_source, paras
-        # content = indexes of paragraphs long enough to count as written work
-        self.content, self.norm, self.psh = [], [], []
+        self.content = []  # indexes of paragraphs long enough to count as written work
         all_words = []
         for i, p in enumerate(paras):
             ws = words(p)
-            self.norm.append(" ".join(ws))
-            self.psh.append(shingles(ws, PARA_SHINGLE))
             if len(ws) >= MIN_WORDS:
                 self.content.append(i)
                 all_words.extend(ws)
-        self.sh = shingles(all_words, DOC_SHINGLE) if len(all_words) >= DOC_SHINGLE else set()
+        self.sh = {h for h in shingles(all_words, DOC_SHINGLE) if h & 3 == 0} if len(all_words) >= DOC_SHINGLE else set()
+        self.digest = hashlib.sha1(" ".join(all_words).encode()).hexdigest()
+
+    @cached_property
+    def norm(self):
+        return [" ".join(words(p)) for p in self.paras]
+
+    @cached_property
+    def psh(self):
+        return [shingles(n.split(), PARA_SHINGLE) for n in self.norm]
+
+    @cached_property
+    def allsh(self):
         # every 3-word run of the text, across paragraph breaks: a paragraph "is in" a document
         # when most of its runs are, however that document's format cut it into paragraphs
-        self.allsh = shingles(all_words, PARA_SHINGLE)
-        self.digest = hashlib.sha1("\n".join(self.norm[i] for i in self.content).encode()).hexdigest()
+        ws = [w for i in self.content for w in self.norm[i].split()]
+        return shingles(ws, PARA_SHINGLE)
 
 
 # ---------------------------------------------------------------- scanning
@@ -180,7 +191,7 @@ def related(a, b):
     if not a.sh or not b.sh:
         return False
     inter = len(a.sh & b.sh)
-    if inter < 20:
+    if inter < 5:  # about 20 shared 5-word runs, as sh keeps 1 in 4
         return False
     jac = inter / (len(a.sh) + len(b.sh) - inter)
     contain = inter / min(len(a.sh), len(b.sh))
@@ -221,7 +232,7 @@ def families(docs):
             for j in range(i + 1, len(ids)):
                 shared[(ids[i], ids[j])] += 1
     for (i, j), n in shared.items():
-        if n >= 2 and find(i) != find(j) and related(docs[i], docs[j]):
+        if n >= 2 and find(i) != find(j) and related(docs[i], docs[j]):  # n counts 1-in-8 runs
             parent[find(i)] = find(j)
 
     groups = defaultdict(list)
