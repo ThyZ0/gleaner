@@ -3,6 +3,7 @@ gleaner FOLDER...           open the app on these folders
 gleaner scan [FOLDER...]    list document families in the terminal
 gleaner show FILE           versions of one document, and what never reached the latest
 gleaner show FILE --merge   also write "<latest> (gleaned)" with those passages put back
+gleaner shortcut            (Windows) put a Gleaner icon on the desktop
 add --json to scan/show for machine-readable output (used by the Claude Code skill)."""
 import argparse
 import json
@@ -116,7 +117,10 @@ def cmd_show(args):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    if not sys.stdout.isatty() and hasattr(sys.stdout, "reconfigure"):
+    if argv[:1] == ["shortcut"]:
+        return make_shortcut()
+    # sys.stdout is None when started without a console (pythonw, the desktop shortcut)
+    if sys.stdout and not sys.stdout.isatty() and hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")  # pipes on Windows default to cp1252 and crash on « ● »
     if argv and argv[0] in ("scan", "show"):
         p = argparse.ArgumentParser(prog=f"gleaner {argv[0]}")
@@ -135,13 +139,38 @@ def main(argv=None):
     p.add_argument("folders", nargs="*")
     p.add_argument("--port", type=int, default=7341)
     p.add_argument("--no-browser", action="store_true")
+    p.add_argument("--quit-when-idle", type=float, metavar="MINUTES",
+                   help="stop the server once no page has been open for this long")
     p.add_argument("--version", action="version", version=__version__)
     args = p.parse_args(argv)
     roots = [os.path.abspath(f) for f in args.folders] or default_roots()
     missing = [r for r in roots if not os.path.isdir(r)]
     if missing:
         sys.exit(f"not a folder: {', '.join(missing)}")
-    serve(roots, port=args.port, open_browser=not args.no_browser)
+    serve(roots, port=args.port, open_browser=not args.no_browser, idle_minutes=args.quit_when_idle)
+
+
+def make_shortcut():
+    """A 'Gleaner' icon on the Windows desktop: opens the app without a terminal window,
+    and the server stops by itself a few minutes after the tab is closed."""
+    if sys.platform != "win32":
+        sys.exit("gleaner shortcut is for Windows; elsewhere, run `gleaner`.")
+    import subprocess
+    pythonw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
+    if not os.path.exists(pythonw):
+        pythonw = sys.executable
+    desktop = subprocess.run(["powershell", "-NoProfile", "-Command", "[Environment]::GetFolderPath('Desktop')"],
+                             capture_output=True, text=True).stdout.strip()
+    link = os.path.join(desktop, "Gleaner.lnk")
+    q = lambda s: s.replace("'", "''")  # PowerShell single-quoted string
+    script = (f"$s = (New-Object -ComObject WScript.Shell).CreateShortcut('{q(link)}'); "
+              f"$s.TargetPath = '{q(pythonw)}'; $s.Arguments = '-m gleaner --quit-when-idle 5'; "
+              f"$s.WorkingDirectory = '{q(os.path.expanduser('~'))}'; "
+              f"$s.Description = 'Every version of your documents, and what was left behind'; $s.Save()")
+    r = subprocess.run(["powershell", "-NoProfile", "-Command", script], capture_output=True, text=True)
+    if r.returncode != 0 or not os.path.exists(link):
+        sys.exit(f"could not create the shortcut: {r.stderr.strip()}")
+    print(f"Created {link}\nDouble-click it to open Gleaner. Delete it to remove it.")
 
 
 if __name__ == "__main__":

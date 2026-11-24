@@ -39,6 +39,8 @@ gleaner "D:\School" "E:\"    # or on the folders you choose
 
 The app opens in your browser at `http://127.0.0.1:7341`. Documents with passages left behind come first, then the most recently edited ones. Families made only of PDFs are put in a separate **Received** tab: they are usually papers you were given (exam subjects and their corrections, for instance), not documents you wrote.
 
+On Windows, `gleaner shortcut` puts a **Gleaner** icon on the desktop: double-click it to open the app without a terminal. The server it starts stops by itself five minutes after you close the tab (`--quit-when-idle MINUTES` does the same from the command line).
+
 From the terminal:
 
 ```

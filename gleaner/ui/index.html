@@ -422,6 +422,7 @@ document.addEventListener("keydown", e => {
 });
 $("roots").addEventListener("input", () => rootsTyped = true);
 $("filter").addEventListener("input", () => S && renderList());
+setInterval(() => fetch("/api/state").catch(() => {}), 60000);  // "still open": lets an idle server stop
 $("filter").placeholder = L.filter;
 $("scanform").onsubmit = async e => {
   e.preventDefault();

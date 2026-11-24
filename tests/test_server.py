@@ -75,3 +75,15 @@ def test_scan_rejects_missing_folders(app):
     url, _, _ = app
     code, r = call(url + "/api/scan", {"roots": [r"Z:\definitely\not\here"]})
     assert code == 400 and r["folders"]
+
+
+def test_idle_server_stops_by_itself(story, monkeypatch):  # noqa: F811
+    monkeypatch.setattr(server.time, "sleep", lambda s: None)
+    state = server.State([str(story)])
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.make_handler(state, 0))
+    state.last_seen -= 10 * 60
+    t = threading.Thread(target=httpd.serve_forever, daemon=True)
+    t.start()
+    server.stop_when_idle(httpd, state, minutes=5)
+    t.join(timeout=5)
+    assert not t.is_alive()

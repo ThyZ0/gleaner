@@ -33,6 +33,7 @@ class State:
         self.finished = None
         self.took = None
         self.created = set()  # copies written by "merge" this session: the only extra paths we reveal
+        self.last_seen = time.time()  # last request from an open page
 
     def start_scan(self, roots):
         with self.lock:
@@ -98,6 +99,7 @@ def make_handler(state, port):
             if self.headers.get("Host") not in allowed_hosts:
                 self._send(403, {"error": "forbidden host"})
                 return False
+            state.last_seen = time.time()
             return True
 
         def do_GET(self):
@@ -186,7 +188,19 @@ def reveal(path):
         subprocess.Popen(["xdg-open", os.path.dirname(path)])
 
 
-def serve(roots, port=7341, open_browser=True, scan_now=True):
+def stop_when_idle(httpd, state, minutes):
+    """An open page calls the server every minute; when none has for `minutes` (tab closed),
+    stop, so a server started from a shortcut does not linger unseen."""
+    def watch():
+        while True:
+            time.sleep(15)
+            if not state.scanning and time.time() - state.last_seen > minutes * 60:
+                httpd.shutdown()
+                return
+    threading.Thread(target=watch, daemon=True).start()
+
+
+def serve(roots, port=7341, open_browser=True, scan_now=True, idle_minutes=None):
     state = State(roots)
     for p in range(port, port + 20):
         try:
@@ -203,6 +217,8 @@ def serve(roots, port=7341, open_browser=True, scan_now=True):
     if open_browser:
         import webbrowser
         webbrowser.open(url)
+    if idle_minutes:
+        stop_when_idle(httpd, state, idle_minutes)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
