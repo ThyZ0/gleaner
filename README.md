@@ -11,11 +11,12 @@ Duplicate finders tell you which files are *identical*. That is the easy case. G
 
 - **Families.** It reads the text of your Word, PowerPoint, LibreOffice, PDF, Markdown, LaTeX and text files and groups the ones that are versions of each other, whatever their names and folders. A `.docx` and its PDF export count as one version.
 - **Lineage.** It rebuilds who descends from whom: each version's parent is the older version it most resembles. Side copies (the one you emailed, the one on the USB stick) show up as branches.
-- **Left behind.** This is the part no other tool does. Gleaner looks for paragraphs that were written in a side copy and **never made it into the latest version**, for example the section your teammate added to the copy you sent them, after you had already moved on with your own. It tells you where each one belongs ("belongs after: …") so you can paste it back.
+- **Left behind.** The part the duplicate finders we looked at do not do. Gleaner looks for paragraphs that were written in a side copy and **never made it into the latest version**, for example the section your teammate added to the copy you sent them, after you had already moved on with your own. It tells you where each one belongs ("belongs after: …").
+- **Merged copy.** One click writes `Report_FINAL (gleaned).docx` next to the latest version, with those passages put back where they belong, highlighted in yellow and in the style of the paragraph they follow. Review, keep or delete them in Word. Also for `.md`, `.txt` and `.tex`.
 - **Deleted on purpose** is kept apart: a paragraph removed on the latest version's own line was probably cut deliberately, so it is listed, folded away, and not raised as a problem.
 - **Compare** any two versions, paragraph by paragraph and word by word.
 
-Everything runs on your computer. Gleaner never modifies, moves or deletes a file, and nothing is sent anywhere.
+Everything runs on your computer and nothing is sent anywhere. Gleaner never modifies, moves or deletes your files; the only file it ever writes is the merged copy you ask for, always under a new name.
 
 ## Install
 
@@ -43,6 +44,7 @@ From the terminal:
 ```
 gleaner scan [FOLDER...]           # every family, latest file of each
 gleaner show FILE [FOLDER...]      # the story of one document: versions, and what was left behind
+gleaner show FILE --merge          # same, and write the merged copy
 ```
 
 Both accept `--json`.

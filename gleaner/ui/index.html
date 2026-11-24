@@ -320,7 +320,7 @@ function renderFamily() {
     const p = v.parent != null ? vs[v.parent] : null;
     const d = p ? v.words - p.words : null;
     return `<div class="row ${v.n === compareB ? "sel" : ""}" data-n="${v.n}" tabindex="0">
-      <div><span class="v">v${v.n + 1}</span><span class="t">${fmt(v.time)}</span>${v.is_head ? `<span class="tag">${L.latest}</span>` : ""}${strayCount(v.n) ? `<span class="tag">${L.strandedN(strayCount(v.n))}</span>` : ""}</div>
+      <div><span class="v">v${v.n + 1}</span><span class="t" title="${esc(L["time_" + v.time_source])}">${fmt(v.doc_time)}</span>${v.is_head ? `<span class="tag">${L.latest}</span>` : ""}${strayCount(v.n) ? `<span class="tag">${L.strandedN(strayCount(v.n))}</span>` : ""}</div>
       <div class="side">${v.words} ${L.words}${d ? ` · <span class="${d > 0 ? "delta-add" : "delta-del"}">${d > 0 ? "+" : "−"}${Math.abs(d)}</span>` : ""}${p ? ` · ${L.from} v${p.n + 1}` : ""}</div>
       <div class="files">${v.files.map(x => `<span class="path" title="${esc(x.path)}">${esc(x.path.slice(root.length))}</span>`).join("")}</div>
       <div class="acts">${!v.is_head ? `<button class="btn small" data-head="${v.files[0].id}">${L.makeHead}</button>` : ""}<button class="btn small" data-reveal="${v.files[0].id}">${L.open}</button></div>
