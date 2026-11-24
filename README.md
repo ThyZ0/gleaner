@@ -20,7 +20,7 @@ Everything runs on your computer and nothing is sent anywhere. Gleaner never mod
 
 ## Install
 
-Python 3.9 or newer.
+Python 3.10 or newer.
 
 ```
 pip install "gleaner-docs[pdf] @ git+https://github.com/ThyZ0/gleaner"
