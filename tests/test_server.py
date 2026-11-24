@@ -8,7 +8,7 @@ from http.server import ThreadingHTTPServer
 
 import pytest
 
-from gleaner import core, server
+from gleaner import server
 from test_core import story  # noqa: F401  (fixture)
 
 
