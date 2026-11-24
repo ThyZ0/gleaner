@@ -57,6 +57,9 @@ main { overflow: auto; min-width: 0; }
   margin-bottom: -1px; }
 .tabs button[aria-selected="true"] { color: var(--ink); border-color: var(--ink); }
 .tabs b { font-weight: 500; font-variant-numeric: tabular-nums; margin-left: 4px; color: var(--ink-3); }
+.filter { margin: 12px 20px 0; padding: 6px 2px; background: transparent; border: 0; border-bottom: 1px solid var(--rule);
+  color: var(--ink); font: inherit; }
+.filter:focus { outline: none; border-color: var(--accent); }
 .list { list-style: none; margin: 0; padding: 6px 0; flex: 1; }
 .list button { width: 100%; text-align: left; background: none; border: 0; padding: 10px 20px; display: block;
   border-left: 2px solid transparent; }
@@ -154,6 +157,8 @@ section > h3 .btn.primary { color: var(--paper); }
       <button role="tab" id="tab-mine" aria-selected="true"><span data-t="mine"></span><b id="c-mine">0</b></button>
       <button role="tab" id="tab-recv" aria-selected="false"><span data-t="received"></span><b id="c-recv">0</b></button>
     </div>
+    <label class="sr" for="filter" data-t="filter"></label>
+    <input class="filter" id="filter" type="search" autocomplete="off">
     <ul class="list" id="list"></ul>
     <div class="aside-foot" id="foot"></div>
     <ul class="problems" id="problems" hidden></ul>
@@ -183,7 +188,7 @@ const T = {
     noFam: "No document exists in several versions in these folders.", pick: "Pick a document on the left.",
     readingTitle: "Reading your documents…", noRecv: "PDF-only families: documents you most likely received rather than wrote.",
     from: "from", words: "words", time_file: "file date", time_document: "date saved in the document",
-    copies: "copies", missing: "Folder not found:", sameN: n => `${n} identical copies`, merge: "Create a merged copy",
+    copies: "copies", missing: "Folder not found:", filter: "Find a document", sameN: n => `${n} identical copies`, merge: "Create a merged copy",
     mergeHelp: "Writes a new file next to the latest version, with these passages put back where they belong and highlighted. The original is not modified.",
     mergedTo: n => `${n} passage${n > 1 ? "s" : ""} put back, highlighted in yellow, in a new file:`, paths: "Paths below are relative to"
   },
@@ -207,7 +212,7 @@ const T = {
     noFam: "Aucun document n'existe en plusieurs versions dans ces dossiers.", pick: "Choisissez un document à gauche.",
     readingTitle: "Lecture de vos documents…", noRecv: "Familles uniquement en PDF : sans doute des documents reçus plutôt qu'écrits.",
     from: "issue de", words: "mots", time_file: "date du fichier", time_document: "date enregistrée dans le document",
-    copies: "copies", missing: "Dossier introuvable :", sameN: n => `${n} copies identiques`, merge: "Créer une copie fusionnée",
+    copies: "copies", missing: "Dossier introuvable :", filter: "Chercher un document", sameN: n => `${n} copies identiques`, merge: "Créer une copie fusionnée",
     mergeHelp: "Écrit un nouveau fichier à côté de la dernière version, avec ces passages remis à leur place et surlignés. L'original n'est pas modifié.",
     mergedTo: n => `${n} passage${n > 1 ? "s" : ""} remis en place, surligné${n > 1 ? "s" : ""} en jaune, dans un nouveau fichier :`, paths: "Chemins ci-dessous relatifs à"
   }
@@ -248,7 +253,8 @@ function renderList() {
   const mine = S.families.filter(f => !f.received), recv = S.families.filter(f => f.received);
   $("c-mine").textContent = mine.length; $("c-recv").textContent = recv.length;
   $("tab-mine").setAttribute("aria-selected", tab === "mine"); $("tab-recv").setAttribute("aria-selected", tab === "recv");
-  const items = tab === "mine" ? mine : recv;
+  const q = $("filter").value.trim().toLowerCase();
+  const items = (tab === "mine" ? mine : recv).filter(f => !q || f.name.toLowerCase().includes(q));
   $("list").innerHTML = items.map(f => `<li><button data-i="${f.i}" ${f.i === current ? 'aria-current="true"' : ""}>
     <span class="n">${esc(f.name)}</span>
     <span class="m">${f.versions > 1 ? `${L.versions(f.versions)} · ${L.files(f.files)}` : L.sameN(f.files)}${f.stranded ? ` · <span class="flag">${L.strandedN(f.stranded)}</span>` : ""}</span>
@@ -402,6 +408,8 @@ document.addEventListener("keydown", e => {
   if (e.key === "Enter" && e.target.classList.contains("row")) e.target.click();
 });
 $("roots").addEventListener("input", () => rootsTyped = true);
+$("filter").addEventListener("input", () => S && renderList());
+$("filter").placeholder = L.filter;
 $("scanform").onsubmit = async e => {
   e.preventDefault();
   const roots = $("roots").value.split(";").map(s => s.trim()).filter(Boolean);

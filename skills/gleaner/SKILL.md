@@ -21,6 +21,8 @@ Gleaner is a local, read-only command. It never modifies, moves or deletes files
    - `stranded`: passages written in another copy and missing from the latest. Quote each one, say which file holds it (`versions[source].files[0].path`) and where it belongs (`after`). These are the most important thing to report.
    - `removed`: passages deleted on the latest version's own line, probably on purpose. Mention the count only, unless asked.
 4. If the user thinks another file is the real latest, say so: the app can recompute with another version as latest (`gleaner` opens it; button "Treat as latest").
-5. Never copy passages into the user's documents yourself unless they ask; offer to.
+5. To put the left-behind passages back, offer `gleaner show "<file>" <folders> --merge`: it writes a NEW file
+   "<latest> (gleaned).docx" (or .md/.txt/.tex) next to the latest version, passages highlighted in yellow, original
+   untouched. Run it only when the user agrees, and give them the path it prints. Never edit their documents yourself.
 
 For a visual comparison, `gleaner "<folder>"` opens the local app in the browser.

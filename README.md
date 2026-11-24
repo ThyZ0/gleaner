@@ -76,7 +76,7 @@ The repository is also a Claude Code plugin. Its skill lets Claude answer questi
 
 - Matching is on words, not meaning: a paragraph rewritten from scratch counts as deleted plus added.
 - Scanned PDFs without a text layer cannot be compared. Encrypted files are listed as unreadable.
-- Excel files and images are not read.
+- Excel files, images and old binary Word files (`.doc`, before 2007) are not read.
 - Dates are only as good as what the files carry. A copied or downloaded file keeps the date saved inside it (Office, LibreOffice), but plain text and PDF files only have the file's date, which copies can change.
 - Very short documents (under about 20 words in common) only group when identical.
 
