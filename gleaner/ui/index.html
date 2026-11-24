@@ -130,6 +130,7 @@ section > h3 .btn.primary { color: var(--paper); }
 .empty h2 { font: italic 600 28px/1.2 var(--serif); margin: 18px 0 10px; }
 .empty p { color: var(--ink-2); margin: 0 0 8px; }
 .empty .glyph { color: var(--accent); }
+.empty .count { font-variant-numeric: tabular-nums; color: var(--ink-3); }
 .problems { font-size: 12.5px; color: var(--ink-2); padding: 0 20px 12px; }
 .problems li { overflow-wrap: anywhere; margin-bottom: 4px; }
 .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--paper);
@@ -190,7 +191,8 @@ const T = {
     noFam: "No document exists in several versions in these folders.", pick: "Pick a document on the left.",
     readingTitle: "Reading your documents…", noRecv: "PDF-only families: documents you most likely received rather than wrote.",
     from: "from", words: "words", time_file: "file date", time_document: "date saved in the document",
-    copies: "copies", missing: "Folder not found:", filter: "Find a document",
+    copies: "copies", missing: "Folder not found:", filter: "Find a document", progress: (n, t) => `${n} / ${t} files`,
+    noFamHint: "Copies often live elsewhere: add a USB drive, an email attachments folder or a shared drive to the folders above, separated by ;",
     suspect: v => `The newest file may be an old or partial copy with a recent date: everything in it is also in v${v}, which also has passages missing here.`,
     makeHeadV: v => `Treat v${v} as latest`, sameN: n => `${n} identical copies`, merge: "Create a merged copy",
     mergeHelp: "Writes a new file next to the latest version, with these passages put back where they belong and highlighted. The original is not modified.",
@@ -216,7 +218,8 @@ const T = {
     noFam: "Aucun document n'existe en plusieurs versions dans ces dossiers.", pick: "Choisissez un document à gauche.",
     readingTitle: "Lecture de vos documents…", noRecv: "Familles uniquement en PDF : sans doute des documents reçus plutôt qu'écrits.",
     from: "issue de", words: "mots", time_file: "date du fichier", time_document: "date enregistrée dans le document",
-    copies: "copies", missing: "Dossier introuvable :", filter: "Chercher un document",
+    copies: "copies", missing: "Dossier introuvable :", filter: "Chercher un document", progress: (n, t) => `${n} / ${t} fichiers`,
+    noFamHint: "Les copies sont souvent ailleurs : ajoutez une clé USB, un dossier de pièces jointes ou un disque partagé aux dossiers ci-dessus, séparés par ;",
     suspect: v => `Le fichier le plus récent est peut-être une copie ancienne ou partielle à date récente : tout son contenu se trouve aussi dans la v${v}, qui contient en plus des passages absents ici.`,
     makeHeadV: v => `Considérer la v${v} comme la dernière`, sameN: n => `${n} copies identiques`, merge: "Créer une copie fusionnée",
     mergeHelp: "Écrit un nouveau fichier à côté de la dernière version, avec ces passages remis à leur place et surlignés. L'original n'est pas modifié.",
@@ -276,6 +279,8 @@ function renderEmpty(scanning) {
   $("main").innerHTML = `<div class="empty"><div>
     <svg class="glyph" width="44" height="44" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 30V9" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/><g fill="currentColor"><ellipse cx="16" cy="5" rx="2.4" ry="4"/><ellipse cx="11.5" cy="11" rx="2.2" ry="3.6" transform="rotate(-35 11.5 11)"/><ellipse cx="20.5" cy="11" rx="2.2" ry="3.6" transform="rotate(35 20.5 11)"/><ellipse cx="11.5" cy="18" rx="2.2" ry="3.6" transform="rotate(-35 11.5 18)"/><ellipse cx="20.5" cy="18" rx="2.2" ry="3.6" transform="rotate(35 20.5 18)"/></g></svg>
     <h2>${scanning ? L.readingTitle : has ? L.pick : S && S.finished ? L.noFam : L.emptyTitle}</h2>
+    ${scanning && S.progress[1] ? `<p class="count">${L.progress(S.progress[0], S.progress[1])}</p>` : ""}
+    ${!scanning && S && S.finished && !has ? `<p>${L.noFamHint}</p>` : ""}
     ${S && S.error ? `<p class="err">${esc(S.error)}</p>` : ""}
     ${!has ? `<p>${L.emptyText}</p>` : ""}<p>${L.emptyLocal}</p></div></div>`;
 }
